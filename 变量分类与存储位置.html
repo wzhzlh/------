@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>变量分类与存储位置</title>
+<style>
+/* ================= 主题 ================= */
+:root{
+  --bg:#0d1117; --bg2:#161b22; --panel:#1c2128; --panel2:#21262d;
+  --border:#30363d; --border2:#3d444d;
+  --text:#e6edf3; --dim:#8b949e; --faint:#6e7681;
+  --cyan:#22d3ee; --amber:#f59e0b; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --purple:#a78bfa; --pink:#f472b6; --rose:#fca5a5; --emerald:#6ee7b7;
+  --mono:"Consolas","SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC","Segoe UI",sans-serif;
+  background:radial-gradient(1100px 500px at 15% -5%, #14202b 0%, transparent 55%),
+             radial-gradient(900px 500px at 100% 0%, #1a1626 0%, transparent 50%), var(--bg);
+  color:var(--text); line-height:1.7; min-height:100vh; overflow-x:hidden;
+}
+.mono{font-family:var(--mono)}
+
+header{padding:54px 22px 28px;text-align:center}
+header .badge{display:inline-block;font-size:12.5px;letter-spacing:2px;color:var(--cyan);border:1px solid var(--border2);border-radius:999px;padding:6px 16px;margin-bottom:16px;background:rgba(34,211,238,.06)}
+header h1{font-size:clamp(24px,4.4vw,42px);font-weight:800;letter-spacing:1px;background:linear-gradient(90deg,#67e8f9,#a5b4fc,#f9a8d4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+header p{color:var(--dim);margin-top:12px;font-size:15px}
+
+main{max-width:1280px;margin:0 auto;padding:16px 18px 90px}
+section{margin:34px 0;padding:26px 24px;background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.sec-num{font-size:13px;font-weight:700;color:#04121f;background:var(--cyan);border-radius:8px;padding:3px 10px;letter-spacing:1px}
+section h2{font-size:23px;font-weight:700}
+.sec-desc{color:var(--dim);margin:4px 0 20px;font-size:14.5px}
+h3{font-size:17px;font-weight:700;margin:22px 0 10px;color:#dbe6f5}
+h3 .tag{font-size:12px;color:var(--faint);font-weight:400;margin-left:8px}
+p.note{color:var(--dim);font-size:14px;margin:8px 0}
+
+.stage{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;overflow:hidden}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:900px){.grid2,.grid4{grid-template-columns:1fr}}
+
+.btn{font-family:inherit;font-size:13.5px;font-weight:600;background:var(--panel2);color:var(--text);border:1px solid var(--border2);border-radius:9px;padding:8px 16px;cursor:pointer;transition:.15s;margin:4px 6px 4px 0}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);border-color:var(--cyan);color:#04121f}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:12px 0}
+
+pre{background:#0b0f16;border:1px solid var(--border);border-radius:11px;padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.65;margin:12px 0}
+pre code{font-family:var(--mono);color:#c7d6ee}
+.kw{color:#7dd3fc}.num{color:#fbbf24}.com{color:#6e7681}.str{color:#a5d6a7}.fn{color:#f472b6}.type{color:#a5b4fc}
+
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+th,td{border:1px solid var(--border2);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:#cfe0f5;font-weight:600}
+td{color:var(--dim)}
+td b{color:var(--text)}
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:6px;margin:2px 3px 2px 0;white-space:nowrap;font-family:var(--mono)}
+
+/* ============ 分类卡片 ============ */
+.cls-card{cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 11px;transition:.15s}
+.cls-card:hover,.cls-card.active{border-color:var(--cyan);transform:translateY(-2px)}
+.cls-card .c-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.cls-card .cname{font-size:14px;font-weight:700;font-family:var(--mono);line-height:1.25}
+.cls-card .cstore{font-size:11px;color:var(--dim);white-space:nowrap;line-height:1.25}
+.cls-card .cdim{font-size:11px;color:var(--dim);margin-top:3px;line-height:1.35}
+.cls-card .cdim b{color:var(--text);font-weight:600}
+
+/* ============ 硬件模型 ============ */
+.hw-svg{width:100%;height:auto;display:block}
+.seg{cursor:pointer}
+.seg rect{transition:stroke-width .2s,filter .2s}
+.seg:hover rect{stroke-width:2.6}
+.region-hl rect{stroke-width:3.4;filter:drop-shadow(0 0 7px currentColor)}
+.region-hl .seg-label{font-weight:700}
+.region-hl{animation:hpulse 1s ease-in-out infinite}
+@keyframes hpulse{0%,100%{opacity:1}50%{opacity:.5}}
+.copy-arrow-hl{stroke-width:3.4;filter:drop-shadow(0 0 7px var(--rose));animation:hpulse 1s ease-in-out infinite}
+.var-tag{font-size:14px;font-weight:700;font-family:var(--mono);paint-order:stroke;stroke:#0d1117;stroke-width:4}
+
+/* ============ 代码行 ============ */
+.fcode-line{font-family:var(--mono);font-size:13.5px;padding:3px 12px;border-radius:5px;color:#c7d6ee;white-space:pre}
+.fcode-line.cur{background:rgba(34,211,238,.14);outline:1px solid var(--cyan);color:#e6edf3}
+.narr{min-height:52px;margin:12px 0;padding:12px 14px;background:var(--bg2);border-left:3px solid var(--cyan);border-radius:0 10px 10px 0;font-size:14.5px}
+.narr .hl{color:var(--amber);font-weight:600}
+.mempanel{background:#0b0f16;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:var(--mono);font-size:12.5px}
+.mempanel .ptitle{color:var(--faint);font-size:11px;letter-spacing:1px;margin-bottom:8px}
+.stack-cell{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-radius:7px;margin:4px 0;font-size:12.5px;transition:.3s}
+.stack-cell .addr{color:var(--faint);font-size:11px}
+.spmark{outline:1px dashed var(--purple);background:rgba(167,139,250,.14)}
+.cell-dying{opacity:.25;text-decoration:line-through;transition:.4s}
+
+/* ============ 上电启动流程 ============ */
+.boot-steps{display:flex;align-items:center;gap:2px;overflow-x:auto;padding:8px 2px;margin:8px 0}
+.boot-step{flex:none;min-width:88px;padding:8px 6px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);text-align:center;transition:.2s}
+.boot-step .dot{width:26px;height:26px;margin:0 auto 4px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;border:2px solid var(--border2);color:var(--dim);transition:.2s}
+.boot-step .bl{font-size:11px;color:var(--dim);line-height:1.3}
+.boot-step.cur{border-color:var(--cyan);background:rgba(34,211,238,.08)}
+.boot-step.cur .dot{background:var(--cyan);border-color:var(--cyan);color:#04121f;font-weight:700}
+.boot-step.cur .bl{color:var(--text)}
+.boot-step.done .dot{border-color:var(--green);color:var(--green)}
+.boot-arrow{flex:none;color:var(--faint);font-size:15px;padding:0 2px}
+.b-hide{opacity:0;transition:opacity .4s}
+.b-show{opacity:1}
+
+footer{text-align:center;color:var(--faint);font-size:12.5px;padding:30px}
+body{font-size:16px} header p,.sec-desc,p.note{color:#c4ceda;font-size:16px} section h2{font-size:26px} h3{font-size:20px}
+table{font-size:15.5px} th{color:#f0f6fc} td{color:#d0d9e3} .fcode-line{font-size:15.5px} .btn{font-size:15px} .narr{font-size:16px;color:#e6edf3}
+.cls-card .cname{font-size:16px}.cls-card .cstore{font-size:13px}.cls-card .cdim{font-size:13px;color:#c4ceda}.boot-step .bl{font-size:13px;color:#c4ceda}
+.mempanel{font-size:14px}.mempanel .ptitle{font-size:13px;color:#b8c4d0}.stack-cell .addr{font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">C 语言 · 变量</div>
+  <h1>变量分类与存储位置</h1>
+  <p>四种变量各有「作用域 / 链接 / 生命周期」，最终都落在 CPU · Flash · SRAM 硬件模型里。点卡片看它住哪，点「播放」看上电启动。</p>
+</header>
+
+<main>
+<section id="class">
+  <div class="sec-head"><span class="sec-num">01</span><h2>变量分类与存储位置</h2></div>
+  <p class="sec-desc">四种变量各有不同的<b style="color:var(--text)">作用域 / 链接 / 生命周期</b>，但最终都落在下面这张物理硬件模型里。点卡片，看它住在芯片的哪一块。</p>
+
+  <!-- 分类卡片 -->
+  <div class="grid4">
+    <div class="cls-card" data-v="local" style="border-left:4px solid var(--cyan)">
+      <div class="c-top"><span class="cname" style="color:var(--cyan)">局部变量</span><span class="cstore">→ <b style="color:var(--purple)">栈 stack</b></span></div>
+      <div class="cdim">作用域<b>块</b> · 链接<b>无</b> · 生命周期<b>自动</b></div>
+    </div>
+    <div class="cls-card" data-v="global" style="border-left:4px solid var(--amber)">
+      <div class="c-top"><span class="cname" style="color:var(--amber)">全局变量</span><span class="cstore">→ <b style="color:var(--rose)">.data</b></span></div>
+      <div class="cdim">作用域<b>文件</b> · 链接<b>外部</b> · 生命周期<b>静态</b></div>
+    </div>
+    <div class="cls-card" data-v="staticg" style="border-left:4px solid var(--green)">
+      <div class="c-top"><span class="cname" style="color:var(--green)">静态全局</span><span class="cstore">→ <b style="color:var(--emerald)">.bss</b></span></div>
+      <div class="cdim">作用域<b>文件</b> · 链接<b>内部</b> · 生命周期<b>静态</b></div>
+    </div>
+    <div class="cls-card" data-v="staticl" style="border-left:4px solid var(--pink)">
+      <div class="c-top"><span class="cname" style="color:var(--pink)">静态局部</span><span class="cstore">→ <b style="color:var(--emerald)">.bss</b></span></div>
+      <div class="cdim">作用域<b>块</b> · 链接<b>无</b> · 生命周期<b>静态</b></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="stage" style="margin:0">
+      <h3 style="margin-top:0">对应声明</h3>
+      <div class="fcode-line" id="cl0"><span class="com">// 全局：文件作用域 + 外部链接</span></div>
+      <div class="fcode-line" id="cl1"><span class="kw">int</span> g = <span class="num">10</span>;          <span class="com">// 已初始化 → .data</span></div>
+      <div class="fcode-line" id="cl2"><span class="kw">static</span> <span class="kw">int</span> s;           <span class="com">// 未初始化 → .bss</span></div>
+      <div class="fcode-line" id="cl3">&nbsp;</div>
+      <div class="fcode-line" id="cl4"><span class="kw">void</span> <span class="fn">f</span>(<span class="kw">void</span>) {</div>
+      <div class="fcode-line" id="cl5">&nbsp;&nbsp;<span class="kw">int</span> a;              <span class="com">// 局部 → 栈</span></div>
+      <div class="fcode-line" id="cl6">&nbsp;&nbsp;<span class="kw">static</span> <span class="kw">int</span> cnt = <span class="num">0</span>; <span class="com">// 静态局部 → .bss</span></div>
+      <div class="fcode-line" id="cl7">}</div>
+    </div>
+    <div>
+      <div class="narr" id="clsNarr" style="margin:0"><span class="hl">点击上方卡片</span>，右侧会告诉你：它存哪、为什么、怎么初始化。</div>
+      <div class="stage" style="margin:14px 0 0">
+        <h3 style="margin-top:0">三条铁律</h3>
+        <p class="note">1. <b style="color:var(--text)">作用域</b>是「编译期、关于名字」的，<b style="color:var(--text)">生命周期</b>是「运行期、关于内存」的——两者可以不一致。<br>
+        2. 存储上只有两大去处：<b style="color:var(--purple)">栈</b>（自动）或 <b style="color:var(--rose)">静态区 .data/.bss</b>（静态）。<br>
+        3. <b style="color:var(--pink)">静态局部</b> = 作用域局部、生命周期全局——看不见，但一直活着。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 物理硬件模型 + 上电启动流程 -->
+  <div class="stage" style="margin:18px auto;max-width:1120px">
+    <svg id="hwModel" class="hw-svg" viewBox="0 0 1120 340" role="img" aria-label="物理硬件模型与上电启动流程"></svg>
+    <div class="controls" style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+      <button class="btn primary" id="bootPlay">▶ 播放上电启动</button>
+      <button class="btn" id="bootStep">单步</button>
+      <button class="btn" id="bootReset">⟲ 复位</button>
+      <span style="margin-left:10px;color:var(--faint);font-size:12px" class="mono">上电 → 取 MSP → Reset_Handler → 拷贝 .data → 清零 .bss → 初始化栈 → main()</span>
+    </div>
+    <div class="boot-steps" id="bootSteps"></div>
+    <div class="narr" id="bootNarr"><span class="hl">待机</span>点击「播放」，直接在三颗芯片上看上电启动流程。</div>
+  </div>
+
+</section>
+<section id="call">
+  <div class="sec-head"><span class="sec-num">02</span><h2>函数调用：分类结论如何在运行时兑现</h2></div>
+  <p class="sec-desc">先看上一节的分类，再看同一个函数连调 3 次：普通局部 <span class="mono">a</span> 在<b>栈</b>上重建又销毁；静态局部 <span class="mono">cnt</span> 在<b>静态区 .bss</b> 固定住址、跨调用累加。</p>
+  <div class="controls">
+    <button class="btn primary" id="callOnce">▶ 调用 f() 一次</button>
+    <button class="btn" id="callStep">⏭ 单步</button>
+    <button class="btn" id="callAuto">▶▶ 自动连调 3 次</button>
+    <button class="btn" id="callReset">⟲ 重置</button>
+  </div>
+  <div class="narr" id="callNarr"><span class="hl">待命</span>点击「调用 f() 一次」，逐步验证局部变量与静态局部变量的生命周期。</div>
+  <div class="grid2">
+    <div>
+      <div class="stage" style="margin:0">
+        <div class="fcode-line" id="fc1"><span class="kw">void</span> <span class="fn">f</span>(<span class="kw">void</span>) {</div>
+        <div class="fcode-line" id="fc2">&nbsp;&nbsp;<span class="kw">int</span> a = <span class="num">0</span>;           <span class="com">// 栈：每次重建</span></div>
+        <div class="fcode-line" id="fc3">&nbsp;&nbsp;<span class="kw">static</span> <span class="kw">int</span> cnt = <span class="num">0</span>;  <span class="com">// .bss：只初始化一次</span></div>
+        <div class="fcode-line" id="fc4">&nbsp;&nbsp;a++;</div>
+        <div class="fcode-line" id="fc5">&nbsp;&nbsp;cnt++;</div>
+        <div class="fcode-line" id="fc6">}</div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:12px"><table><thead><tr><th>调用</th><th>a（局部/栈）</th><th>cnt（静态/.bss）</th></tr></thead><tbody id="callLog"><tr><td colspan="3" style="color:var(--faint)">尚未调用</td></tr></tbody></table></div>
+    </div>
+    <div><div class="mempanel"><div class="ptitle">SRAM · 栈区（自动生命周期，地址高→低）</div><div id="stackVis"></div><div class="ptitle" style="margin-top:14px">SRAM · 静态区 .bss（静态生命周期，固定住址）</div><div id="staticVis"></div></div></div>
+  </div>
+  <p class="note">关键连接：<b style="color:var(--purple)">作用域</b>决定“名字在哪里可见”，<b style="color:var(--emerald)">生命周期</b>决定“内存活多久”。静态局部仍只在块内可见，但它的存储位置和寿命与全局静态变量一致。</p>
+</section>
+</main>
+
+<footer>变量分类与存储位置 · 单文件 · 无外部依赖</footer>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const NS='http://www.w3.org/2000/svg';
+function svg(tag,attrs){ const e=document.createElementNS(NS,tag); for(const k in attrs)e.setAttribute(k,attrs[k]); return e; }
+function svgText(x,y,s,fill,size,extra){ const t=svg('text',Object.assign({x,y,fill,'font-size':size||13,'font-family':'monospace'},extra)); t.textContent=s; return t; }
+
+/* ================= 物理硬件模型 ================= */
+const HW_SEGS = [
+  {id:'text',   chip:'flash', x:335, y:75,  w:270, h:60, color:'#f59e0b', label:'.text 代码',    sub:'程序指令（main 的机器码）'},
+  {id:'rodata', chip:'flash', x:335, y:145, w:270, h:60, color:'#fbbf24', label:'.rodata 常量', sub:'const、字符串字面量（只读）'},
+  {id:'dataflash', chip:'flash', x:335, y:215, w:270, h:60, color:'#fca5a5', label:'.data 初值副本', sub:'已初始化全局变量的初值'},
+  {id:'stack',  chip:'sram',  x:725, y:75,  w:270, h:48, color:'#a78bfa', label:'栈 stack ↓',  sub:'局部变量、参数、返回地址'},
+  {id:'heap',   chip:'sram',  x:725, y:133, w:270, h:48, color:'#3b82f6', label:'堆 heap ↑',   sub:'malloc / calloc / realloc'},
+  {id:'bss',    chip:'sram',  x:725, y:191, w:270, h:42, color:'#6ee7b7', label:'.bss',        sub:'未初始化全局/静态（自动清零）'},
+  {id:'data',   chip:'sram',  x:725, y:243, w:270, h:42, color:'#fca5a5', label:'.data',       sub:'已初始化全局/静态'},
+];
+function chipPins(el, x, y, w, h, color){
+  const n=5, m=3;
+  for(let i=0;i<n;i++){ const px=x+w*(i+1)/(n+1);
+    el.appendChild(svg('line',{x1:px,y1:y-10,x2:px,y2:y,stroke:color,'stroke-width':2}));
+    el.appendChild(svg('line',{x1:px,y1:y+h,x2:px,y2:y+h+10,stroke:color,'stroke-width':2}));
+  }
+  for(let i=0;i<m;i++){ const py=y+h*(i+1)/(m+1);
+    el.appendChild(svg('line',{x1:x-10,y1:py,x2:x,y2:py,stroke:color,'stroke-width':2}));
+    el.appendChild(svg('line',{x1:x+w,y1:py,x2:x+w+10,y2:py,stroke:color,'stroke-width':2}));
+  }
+}
+function drawHwModel(){
+  const s=$('#hwModel'); s.innerHTML='';
+
+  // 总线（水平，垫底）
+  const bus=svg('g',{stroke:'#5b6470','stroke-width':2});
+  bus.appendChild(svg('line',{x1:220,y1:175,x2:320,y2:175}));
+  bus.appendChild(svg('line',{x1:620,y1:175,x2:710,y2:175}));
+  s.appendChild(bus);
+  s.appendChild(svgText(270,166,'总线','#8b949e',11,{'text-anchor':'middle'}));
+  s.appendChild(svgText(665,166,'总线','#8b949e',11,{'text-anchor':'middle'}));
+
+  // CPU 芯片（左）
+  s.appendChild(svg('rect',{x:30,y:80,width:190,height:190,rx:12,fill:'#10151c',stroke:'#22d3ee','stroke-width':2}));
+  s.appendChild(svgText(125,106,'CPU 芯片（Cortex-M3）','#22d3ee',13.5,{'text-anchor':'middle','font-weight':'700'}));
+  s.appendChild(svgText(125,132,'运算器 ALU','#bfe6ff',12,{'text-anchor':'middle'}));
+  s.appendChild(svgText(125,156,'控制器','#bfe6ff',12,{'text-anchor':'middle'}));
+  s.appendChild(svgText(125,180,'寄存器组 R0~R15','#bfe6ff',12,{'text-anchor':'middle'}));
+  s.appendChild(svgText(125,204,'NVIC 中断控制器','#bfe6ff',12,{'text-anchor':'middle'}));
+  s.appendChild(svgText(125,228,'SysTick 定时器','#bfe6ff',12,{'text-anchor':'middle'}));
+  s.appendChild(svgText(125,250,'（CPU = 运算器 + 控制器 + 寄存器）','#7ea4d8',9.5,{'text-anchor':'middle'}));
+  chipPins(s,30,80,190,190,'#22d3ee');
+
+  // Flash 芯片（中）
+  s.appendChild(svg('rect',{x:320,y:40,width:300,height:270,rx:12,fill:'#10151c',stroke:'#f59e0b','stroke-width':2}));
+  s.appendChild(svgText(470,64,'Flash（ROM）· 掉电不丢','#fcd34d',13,{'text-anchor':'middle','font-weight':'700'}));
+  chipPins(s,320,40,300,270,'#f59e0b');
+
+  // SRAM 芯片（右）
+  s.appendChild(svg('rect',{x:710,y:40,width:300,height:270,rx:12,fill:'#10151c',stroke:'#22c55e','stroke-width':2}));
+  s.appendChild(svgText(860,64,'SRAM（RAM）· 掉电丢失','#6ee7b7',13,{'text-anchor':'middle','font-weight':'700'}));
+  chipPins(s,710,40,300,270,'#22c55e');
+
+  // 段
+  HW_SEGS.forEach(seg=>{
+    const g=svg('g',{id:'reg-'+seg.id,'class':'seg'});
+    const r=svg('rect',{x:seg.x,y:seg.y,width:seg.w,height:seg.h,rx:6,fill:seg.color+'20',stroke:seg.color,'stroke-width':1.6});
+    const lb=svgText(seg.x+10,seg.y+Math.min(20,seg.h/2+3),seg.label,seg.color,13,{'font-weight':'600'});
+    lb.setAttribute('class','seg-label');
+    const sb=svgText(seg.x+10,seg.y+seg.h-10,seg.sub,'#8b949e',10);
+    g.append(r,lb,sb);
+    s.appendChild(g);
+  });
+
+  // .data 拷贝箭头：Flash .data初值 → SRAM .data
+  const arr=svg('path',{id:'copyArrow',d:'M605 245 C665 245 665 264 725 264',fill:'none',stroke:'#fca5a5','stroke-width':2.2,'stroke-dasharray':'6 4'});
+  s.appendChild(arr);
+  s.appendChild(svg('path',{d:'M725 264 L717 259 M725 264 L717 269',fill:'none',stroke:'#fca5a5','stroke-width':2.2}));
+  s.appendChild(svgText(665,236,'上电拷贝','#fca5a5',10.5,{'text-anchor':'middle'}));
+
+  // 地址标注
+  s.appendChild(svgText(470,330,'0x0800 0000','#6e7681',10,{'text-anchor':'middle'}));
+  s.appendChild(svgText(860,330,'0x2000 0000','#6e7681',10,{'text-anchor':'middle'}));
+
+  // 上电启动：SP 箭头（取 MSP / 初始化栈）
+  const sp=svg('g',{id:'bd-sp',class:'b-hide'});
+  sp.appendChild(svg('line',{x1:600,y1:99,x2:722,y2:99,stroke:'#a78bfa','stroke-width':2.5,'stroke-dasharray':'6 4'}));
+  sp.appendChild(svg('path',{d:'M722 99 L714 94 M722 99 L714 104',stroke:'#a78bfa','stroke-width':2.5,fill:'none'}));
+  sp.appendChild(svgText(661,88,'SP → 栈顶 0x2000 5000','#a78bfa',11.5,{'text-anchor':'middle'}));
+  s.appendChild(sp);
+
+  // 上电启动：main() 运行
+  const main=svg('g',{id:'bd-main',class:'b-hide'});
+  main.appendChild(svg('rect',{x:410,y:5,width:300,height:32,rx:8,fill:'#22d3ee15',stroke:'#22d3ee','stroke-width':2}));
+  main.appendChild(svgText(560,26,'main() 运行中','#22d3ee',14,{'text-anchor':'middle','font-weight':'700'}));
+  s.appendChild(main);
+
+  // 变量名浮动标签
+  s.appendChild(svg('text',{id:'varTag',x:0,y:0,fill:'#fff','font-size':14,'font-weight':'700','font-family':'monospace','class':'var-tag','text-anchor':'middle'}));
+}
+
+/* 卡片 → 区域高亮 */
+const HWMAP = {
+  local:   { regions:['stack'],        tag:'a',   tx:860, ty:99, narr:'<span class="hl">int a;</span> 局部变量住在 <b style="color:var(--purple)">栈</b>：进块压栈创建、出块弹栈销毁，每次调用都是新的 a。' },
+  global:  { regions:['data','dataflash','arrow'], tag:'g', tx:860, ty:264, narr:'<span class="hl">int g = 10;</span> 已初始化全局变量住在 <b style="color:var(--rose)">.data</b>；它的初值 10 其实存在 <b style="color:var(--rose)">Flash 的 .data 初值副本</b>，上电时沿虚线拷进 SRAM。' },
+  staticg: { regions:['bss'],          tag:'s',   tx:860, ty:212, narr:'<span class="hl">static int s;</span> 未初始化静态全局住在 <b style="color:var(--emerald)">.bss</b>（自动清零）。加 static 只改<b>链接</b>为内部，不改存储位置。' },
+  staticl: { regions:['bss'],          tag:'cnt', tx:860, ty:212, narr:'<span class="hl">static int cnt = 0;</span> 静态局部也住 <b style="color:var(--emerald)">.bss</b>——和静态全局同区，但作用域是<b>块</b>。所以「看不见，却一直活着」。' },
+};
+function highlightVar(key){
+  $$('#hwModel .seg').forEach(g=>g.classList.remove('region-hl'));
+  const ca=$('#copyArrow'); ca.classList.remove('copy-arrow-hl'); ca.setAttribute('stroke','#fca5a5'); ca.setAttribute('stroke-width','2.2');
+  ['bd-sp','bd-main'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.remove('b-show'); });
+  stopBoot();
+  $$('#bootSteps .boot-step').forEach(el=>el.classList.remove('cur','done'));
+  const m=HWMAP[key];
+  m.regions.forEach(r=>{
+    if(r==='arrow'){ ca.classList.add('copy-arrow-hl'); }
+    else { const el=$('#reg-'+r); if(el) el.classList.add('region-hl'); }
+  });
+  const vt=$('#varTag'); vt.setAttribute('x',m.tx); vt.setAttribute('y',m.ty); vt.textContent=m.tag;
+  $$('.cls-card').forEach(c=>c.classList.toggle('active', c.dataset.v===key));
+  $$('#class .fcode-line').forEach(l=>l.classList.remove('cur'));
+  const lines={local:['cl4','cl5'],global:['cl0','cl1'],staticg:['cl0','cl2'],staticl:['cl4','cl6']}[key];
+  lines.forEach(id=>$('#'+id).classList.add('cur'));
+  $('#clsNarr').innerHTML=m.narr;
+}
+$$('.cls-card').forEach(c=>c.onclick=()=>highlightVar(c.dataset.v));
+
+/* ================= 上电启动流程 ================= */
+const BOOT_STEPS=[
+  {name:'上电', narr:'芯片上电，Flash 与 SRAM 开始工作，一切从零开始。'},
+  {name:'取初始 MSP', narr:'硬件从 Flash 向量表 <b style="color:var(--text)">0x0000 0000</b> 读出初始 <b style="color:var(--purple)">MSP = 0x2000 5000</b>（SRAM 顶端），栈指针先就位。'},
+  {name:'Reset_Handler', narr:'PC 跳到 <b style="color:var(--text)">Reset_Handler</b>（在 Flash 的 .text 里），开始执行启动代码。'},
+  {name:'拷贝 .data', narr:'把 Flash 里的 <b style="color:var(--rose)">.data 初值</b> 逐个拷到 SRAM 的 .data 区——所以 <span class="mono">int g=10</span> 上电后才是 10。'},
+  {name:'清零 .bss', narr:'<b style="color:var(--emerald)">.bss</b>（未初始化全局/静态）全部写 0，保证未初始化变量默认是 0。'},
+  {name:'初始化栈', narr:'栈就绪：<b style="color:var(--purple)">SP</b> 指向 SRAM 顶端，之后函数调用、局部变量都能压栈了。'},
+  {name:'main()', narr:'调用 <b style="color:var(--cyan)">main()</b>，程序正式开始运行。'},
+];
+let bootIdx=-1, bootTimer=null;
+function buildBootTimeline(){
+  const el=$('#bootSteps'); el.innerHTML='';
+  BOOT_STEPS.forEach((s,i)=>{
+    const d=document.createElement('div'); d.className='boot-step'; d.id='bstep'+i;
+    d.innerHTML=`<div class="dot">${i+1}</div><div class="bl">${s.name}</div>`;
+    el.appendChild(d);
+    if(i<BOOT_STEPS.length-1){ const a=document.createElement('div'); a.className='boot-arrow'; a.textContent='→'; el.appendChild(a); }
+  });
+}
+function bootRender(step){
+  $$('#hwModel .seg').forEach(g=>g.classList.remove('region-hl'));
+  const ca=$('#copyArrow'); ca.classList.remove('copy-arrow-hl');
+  ['bd-sp','bd-main'].forEach(id=>{ const e=$('#'+id); if(e) e.classList.remove('b-show'); });
+  const vt=$('#varTag'); if(vt) vt.textContent='';
+  $$('#bootSteps .boot-step').forEach((el,i)=>{ el.classList.remove('cur','done'); if(i<step) el.classList.add('done'); if(i===step) el.classList.add('cur'); });
+  if(step<0){
+    $('#bootNarr').innerHTML='<span class="hl">待机</span>点击「播放」，在三颗芯片上看上电后如何一步步醒来。';
+    $('#bootStep').disabled=false;
+    return;
+  }
+  switch(step){
+    case 0: break;
+    case 1: $('#reg-stack').classList.add('region-hl'); $('#bd-sp').classList.add('b-show'); break;
+    case 2: $('#reg-text').classList.add('region-hl'); break;
+    case 3: $('#reg-dataflash').classList.add('region-hl'); $('#reg-data').classList.add('region-hl'); ca.classList.add('copy-arrow-hl'); break;
+    case 4: $('#reg-bss').classList.add('region-hl'); break;
+    case 5: $('#reg-stack').classList.add('region-hl'); $('#bd-sp').classList.add('b-show'); break;
+    case 6: $('#bd-main').classList.add('b-show'); break;
+  }
+  $('#bootNarr').innerHTML=`<span class="hl">第 ${step+1}/${BOOT_STEPS.length} 步：</span>${BOOT_STEPS[step].narr}`;
+  $('#bootStep').disabled = step>=BOOT_STEPS.length-1;
+}
+function stopBoot(){ if(bootTimer){clearInterval(bootTimer);bootTimer=null;} }
+function bootGoto(i){ bootIdx=Math.max(-1,Math.min(BOOT_STEPS.length-1,i)); bootRender(bootIdx); }
+$('#bootStep').onclick=()=>{ stopBoot(); bootGoto(bootIdx+1); };
+$('#bootReset').onclick=()=>{ stopBoot(); bootGoto(-1); };
+$('#bootPlay').onclick=()=>{ stopBoot(); if(bootIdx>=BOOT_STEPS.length-1) bootGoto(-1); bootTimer=setInterval(()=>{ if(bootIdx>=BOOT_STEPS.length-1){stopBoot();return;} bootGoto(bootIdx+1); },1300); };
+
+/* ================= 初始化 ================= */
+drawHwModel();
+highlightVar('local');
+buildBootTimeline();
+bootRender(-1);
+
+/* ================= 函数调用动画 ================= */
+const STACK_TOP=0x20005000, CNT_ADDR=0x20000004; let calls=0,cnt=0,animBusy=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function hlCall(id){ $$('#call .fcode-line').forEach(l=>l.classList.remove('cur')); if(id) $('#'+id).classList.add('cur'); }
+function renderStack(a,phase){ const el=$('#stackVis'); if(phase==='empty'||phase==='returned'){ el.innerHTML=`${phase==='returned'?'<div class="stack-cell cell-dying" style="background:rgba(167,139,250,.06)"><span style="color:var(--purple)">a = 1</span><span class="addr">0x2000 4FFC 已销毁</span></div>':''}<div class="stack-cell" style="background:rgba(148,163,184,.04)"><span style="color:var(--faint)">…（调用者栈帧）</span><span class="addr">SP = 0x${STACK_TOP.toString(16).toUpperCase()}</span></div>`; } else el.innerHTML=`<div class="stack-cell spmark" style="background:rgba(167,139,250,.14);border:1px solid var(--purple)"><span style="color:var(--purple)">a = ${a}</span><span class="addr">0x2000 4FFC ◀ SP 栈顶</span></div><div class="stack-cell" style="background:rgba(148,163,184,.04)"><span style="color:var(--faint)">…（调用者栈帧）</span><span class="addr">0x2000 5000</span></div>`; }
+function renderStatic(){ $('#staticVis').innerHTML=`<div class="stack-cell" style="background:rgba(110,231,183,.14);border:1px solid var(--emerald)"><span style="color:var(--emerald)">cnt = ${cnt}</span><span class="addr">0x${CNT_ADDR.toString(16).toUpperCase().padStart(8,'0')}（.bss 固定住址）</span></div>`; }
+function addLog(n){ const tb=$('#callLog'); if(n===1)tb.innerHTML=''; const tr=document.createElement('tr'); tr.innerHTML=`<td>第 ${n} 次</td><td style="color:var(--purple)">a = 1（每次新 a）</td><td style="color:var(--emerald)">cnt = ${n}</td>`; tb.appendChild(tr); }
+function setCallBtns(on){ ['#callOnce','#callStep','#callAuto','#callReset'].forEach(s=>$(s).disabled=!on); }
+let stepPhase=0,stepN=1,stepA=0;
+function resetStep(){ stepPhase=0; stepN=calls+1; stepA=0; }
+function callStep(){ if(animBusy)return; const n=stepN; switch(stepPhase){
+  case 0: hlCall('fc1'); $('#callNarr').innerHTML=`第 ${n} 次调用：进入 <span class="hl">f()</span>。点击“单步”继续。`; stepPhase++; break;
+  case 1: hlCall('fc2'); stepA=0; renderStack(0,'live'); $('#callNarr').innerHTML='<b>SP 下移压栈</b>，创建 <span class="hl">a = 0</span>。'; stepPhase++; break;
+  case 2: hlCall('fc3'); $('#callNarr').innerHTML=n===1?'执行 static 初始化：cnt 在 .bss 分配且只初始化一次。':'跳过初始化：cnt 仍在 .bss 中保留。'; stepPhase++; break;
+  case 3: hlCall('fc4'); stepA=1; renderStack(1,'live'); $('#callNarr').innerHTML='<span class="hl">a++</span> → a = 1（栈上新值）。'; stepPhase++; break;
+  case 4: hlCall('fc5'); cnt++; renderStatic(); $('#callNarr').innerHTML=`<span class="hl">cnt++</span> → cnt = ${cnt}，跨调用保留。`; stepPhase++; break;
+  case 5: hlCall('fc6'); renderStack(1,'returned'); $('#callNarr').innerHTML='返回：<b>SP 上移弹栈</b>，a 销毁；cnt 仍在 .bss。'; stepPhase++; break;
+  default: calls=n; addLog(n); hlCall(null); $('#callNarr').innerHTML=`第 ${calls} 次调用结束。a 死了，cnt 还活着。`; resetStep();
+ }}
+async function callOnce(){ if(animBusy)return; animBusy=true; setCallBtns(false); const n=calls+1; hlCall('fc1'); $('#callNarr').innerHTML=`第 ${n} 次调用：进入 <span class="hl">f()</span>。`; await sleep(450); hlCall('fc2'); renderStack(0,'live'); $('#callNarr').innerHTML='<b>SP 下移压栈</b>，创建 <span class="hl">a = 0</span>（每次调用都是新 a）。'; await sleep(650); hlCall('fc3'); $('#callNarr').innerHTML=n===1?'第 1 次执行 <span class="hl">static int cnt = 0</span> 的初始化；cnt 已在上电时分配在 .bss。':'这次跳过初始化——<span class="hl">cnt</span> 早就在 .bss 里活着了。'; await sleep(650); hlCall('fc4'); renderStack(1,'live'); $('#callNarr').innerHTML='<span class="hl">a++</span> → a = 1。'; await sleep(550); hlCall('fc5'); cnt++; renderStatic(); $('#callNarr').innerHTML=`<span class="hl">cnt++</span> → cnt = ${cnt}。<b style="color:var(--emerald)">它跨调用保留下来了！</b>`; await sleep(650); hlCall('fc6'); renderStack(1,'returned'); $('#callNarr').innerHTML='返回：<b>SP 上移弹栈</b>，a 随栈帧销毁；cnt 仍留在 .bss。'; await sleep(600); calls=n; addLog(n); hlCall(null); $('#callNarr').innerHTML=`第 ${calls} 次调用结束。a 死了，cnt 还活着。`; animBusy=false; setCallBtns(true); }
+$('#callOnce').onclick=callOnce; $('#callStep').onclick=callStep; $('#callAuto').onclick=async()=>{ if(animBusy)return; for(let i=0;i<3;i++) await callOnce(); }; $('#callReset').onclick=()=>{ calls=0;cnt=0;animBusy=false;resetStep();hlCall(null);renderStack(0,'empty');renderStatic();$('#callLog').innerHTML='<tr><td colspan="3" style="color:var(--faint)">尚未调用</td></tr>';$('#callNarr').innerHTML='<span class="hl">已重置</span>点击「单步」逐阶段执行，或点击「调用 f() 一次」播放完整过程。'; };
+renderStack(0,'empty'); renderStatic();
+</script>
+</body>
+</html>

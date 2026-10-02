@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STM32F103C8T6 · volatile 全维度可视化教学演示</title>
+<style>
+/* ================= 主题变量 ================= */
+:root{
+  --bg:#0d1117; --bg2:#161b22; --panel:#1c2128; --panel2:#21262d;
+  --border:#30363d; --border2:#3d444d;
+  --text:#e6edf3; --dim:#8b949e; --faint:#6e7681;
+  --cyan:#22d3ee; --amber:#f59e0b; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --purple:#a78bfa; --pink:#f472b6;
+  --mono:"Consolas","SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC","Segoe UI",sans-serif;
+  background:radial-gradient(1200px 500px at 15% -5%, #14202b 0%, transparent 55%),
+             radial-gradient(1000px 500px at 100% 0%, #1a1626 0%, transparent 50%), var(--bg);
+  color:var(--text); line-height:1.7; min-height:100vh; overflow-x:hidden;
+}
+.mono{font-family:var(--mono)}
+a{color:var(--cyan);text-decoration:none}
+
+/* ================= 顶部标题 ================= */
+header{padding:60px 22px 34px;text-align:center}
+header .badge{
+  display:inline-block;font-size:12.5px;letter-spacing:2px;color:var(--cyan);
+  border:1px solid var(--border2);border-radius:999px;padding:6px 16px;margin-bottom:18px;
+  background:rgba(34,211,238,.06);
+}
+header h1{
+  font-size:clamp(26px,4.6vw,46px);font-weight:800;letter-spacing:1px;
+  background:linear-gradient(90deg,#67e8f9,#a5b4fc,#f9a8d4);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.param-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.param{
+  font-size:12.5px;padding:5px 13px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--dim);font-family:var(--mono);
+}
+.param b{color:var(--cyan);font-weight:600}
+header .tip{color:var(--faint);font-size:12.5px;margin-top:14px}
+
+/* ================= 导航 ================= */
+nav{
+  position:sticky;top:0;z-index:100;background:rgba(13,17,23,.85);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:2px;justify-content:center;padding:8px 14px;
+}
+nav a{color:var(--dim);font-size:12.5px;padding:6px 11px;border-radius:7px;transition:.15s;white-space:nowrap}
+nav a:hover{color:var(--text);background:var(--panel2)}
+nav a.on{color:var(--cyan);background:rgba(34,211,238,.1)}
+
+/* ================= 布局 ================= */
+main{max-width:1180px;margin:0 auto;padding:20px 18px 120px}
+section{
+  margin:48px 0;padding:30px 28px;
+  background:linear-gradient(180deg,var(--panel),var(--bg2));
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+}
+.sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.sec-num{font-size:13px;font-weight:700;color:#04121f;background:var(--cyan);border-radius:8px;padding:3px 10px;letter-spacing:1px}
+section h2{font-size:23px;font-weight:700}
+.sec-desc{color:var(--dim);margin:4px 0 20px;font-size:14.5px}
+h3{font-size:17px;font-weight:700;margin:24px 0 10px;color:#dbe6f5}
+h3 .tag{font-size:12px;color:var(--faint);font-weight:400;margin-left:8px}
+p.note{color:var(--dim);font-size:14px;margin:8px 0}
+
+/* 💡 按钮 + 提示 */
+.tip-btn{
+  margin-left:auto;font-family:inherit;font-size:13px;background:var(--panel2);
+  color:var(--dim);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;cursor:pointer;transition:.15s;
+}
+.tip-btn:hover{color:var(--amber);border-color:var(--amber)}
+.takeaway{
+  display:none;margin:12px 0;padding:12px 16px;border-left:3px solid var(--amber);
+  background:var(--bg2);border-radius:0 10px 10px 0;font-size:14.5px;color:var(--text);
+}
+.takeaway.show{display:block}
+.takeaway b{color:var(--amber)}
+
+/* ================= 通用组件 ================= */
+.stage{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;overflow:hidden}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.btn{
+  font-family:inherit;font-size:13.5px;font-weight:600;background:var(--panel2);color:var(--text);
+  border:1px solid var(--border2);border-radius:9px;padding:8px 16px;cursor:pointer;transition:.15s;margin:4px 6px 4px 0;
+}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);border-color:var(--cyan);color:#04121f}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.warn{background:var(--red);border-color:var(--red);color:#fff}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.sm{padding:5px 11px;font-size:12.5px}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:12px 0}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0}
+.legend span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim)}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+th,td{border:1px solid var(--border2);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:#cfe0f5;font-weight:600}
+td{color:var(--dim)}
+td b{color:var(--text)}
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:6px;margin:2px 3px 2px 0;white-space:nowrap;font-family:var(--mono)}
+
+/* 代码高亮 */
+.kw{color:#7dd3fc}.num{color:#fbbf24}.com{color:#6e7681}.str{color:#a5d6a7}.fn{color:#f472b6}.type{color:#a5b4fc}
+.volatile{color:#f472b6;font-weight:700;text-shadow:0 0 8px rgba(244,114,182,.35)}
+.mne{color:#7dd3fc}.reg{color:#a78bfa}.imm{color:#fbbf24}.lbl{color:#f472b6}
+
+/* ================= 模拟器面板（对齐 CPU 模拟器） ================= */
+.debug-panel{background:#0b0f16;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:var(--mono);font-size:12.5px}
+.debug-panel .ptitle{color:var(--faint);font-size:11px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+
+/* 反汇编窗口 */
+.code-line{font-family:var(--mono);display:grid;grid-template-columns:80px 76px 1fr 62px;gap:8px;padding:2px 8px;font-size:13px;border-radius:4px;align-items:baseline;line-height:1.6}
+.code-line .addr{color:var(--cyan);font-weight:600}
+.code-line .mc{color:var(--dim)}
+.code-line .asm{white-space:pre}
+.code-line .src{color:var(--faint);text-align:right;font-size:11px}
+.code-line.cur{background:rgba(34,211,238,.12);outline:1px solid var(--cyan)}
+.code-line.cur .asm{color:#e6edf3}
+.code-line.hl{background:rgba(245,158,11,.10);outline:1px solid var(--amber)}
+.code-line.hl .asm{color:#ffd166}
+.lbl-line{font-family:var(--mono);padding:1px 8px;color:var(--pink);font-size:12px}
+
+/* C 源码窗口 */
+.hal-line{font-family:var(--mono);font-size:13.5px;padding:2px 8px;border-radius:4px;color:#c7d6ee;display:flex;gap:10px;line-height:1.65;white-space:pre}
+.hal-line .ln{color:var(--faint);flex:none;width:20px;text-align:right;user-select:none}
+.hal-line .code{white-space:pre}
+.hal-line.cur{background:rgba(34,211,238,.14);outline:1px solid var(--cyan);animation:halpulse .8s ease-in-out infinite}
+.hal-line.cur .code{color:#e6edf3}
+@keyframes halpulse{0%,100%{box-shadow:0 0 0 rgba(34,211,238,0)}50%{box-shadow:0 0 12px rgba(34,211,238,.5)}}
+
+/* 寄存器窗口 */
+.reg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-family:var(--mono);font-size:12.5px}
+.reg-cell{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:5px 9px;display:flex;justify-content:space-between;transition:background .2s}
+.reg-cell .rn{color:var(--dim)} .reg-cell .rv{color:var(--text)}
+.reg-cell.flash{animation:flashg .7s ease}
+@keyframes flashg{0%{background:rgba(34,197,94,.45)}100%{background:transparent}}
+@keyframes flashy{0%{background:rgba(245,158,11,.5)}100%{background:transparent}}
+
+/* 内存窗口 */
+.memdump{font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre;overflow-x:auto}
+.memdump .live{color:var(--green)}.memdump .stale{color:var(--amber)}.memdump .warn{color:var(--red)}
+
+/* 值单元 */
+.valcell{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;transition:.2s}
+.valcell .k{color:var(--dim);font-size:11px;letter-spacing:1px;font-family:var(--mono)}
+.valcell .v{font-size:24px;font-weight:700;font-family:var(--mono);color:var(--cyan);margin-top:2px}
+.valcell .s{color:var(--faint);font-size:11px;font-family:var(--mono);margin-top:2px}
+.valcell.mismatch{border-color:var(--red);background:rgba(239,68,68,.08)}
+.valcell.mismatch .v{color:var(--red)}
+.valcell.ok{border-color:var(--green);background:rgba(34,197,94,.06)}
+.valcell.ok .v{color:var(--green)}
+
+/* 分段开关 */
+.seg-toggle{display:inline-flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden}
+.seg-toggle button{background:transparent;border:0;color:var(--dim);padding:7px 15px;cursor:pointer;font-family:inherit;font-size:13.5px;transition:.15s}
+.seg-toggle button.on{background:var(--cyan);color:#04121f;font-weight:700}
+
+/* 优化等级 */
+.opt-chip{cursor:pointer;padding:7px 15px;border-radius:9px;border:1px solid var(--border2);background:var(--panel2);font-family:var(--mono);font-size:14px;font-weight:700;transition:.15s}
+.opt-chip:hover{border-color:var(--cyan)}
+.opt-chip.on{background:var(--cyan);color:#04121f;border-color:var(--cyan)}
+input[type=range]{-webkit-appearance:none;height:6px;border-radius:3px;background:var(--border2);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--cyan);cursor:pointer;border:2px solid #04121f}
+
+/* 状态条 */
+.status{margin:12px 0;padding:11px 14px;background:var(--bg2);border-left:3px solid var(--cyan);border-radius:0 10px 10px 0;font-size:15px;min-height:44px}
+.status.warn{border-left-color:var(--red);background:rgba(239,68,68,.05)}
+.status.ok{border-left-color:var(--green);background:rgba(34,197,94,.05)}
+.status .hl{color:var(--amber);font-weight:700}
+.status .okc{color:var(--green);font-weight:700}
+.status .bad{color:var(--red);font-weight:700}
+
+/* Watch 窗口 */
+.watch-tbl td{font-family:var(--mono);font-size:13px;padding:7px 12px}
+.watch-tbl .live{color:var(--green);font-weight:700}
+.watch-tbl .stale{color:var(--amber);font-weight:700}
+.watch-tbl .gone{color:var(--faint);font-style:italic}
+.watch-live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1s infinite;vertical-align:middle;margin-left:6px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+.pulse{animation:halpulse .8s ease-in-out infinite}
+.led{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:middle;margin:0 6px;border:2px solid #555;transition:.2s}
+.led.on{background:var(--green);box-shadow:0 0 12px var(--green);border-color:var(--green)}
+.led.off{background:#333}
+
+footer{text-align:center;color:var(--faint);font-size:12.5px;padding:30px}
+body{font-size:16px} header p,.sec-desc,p.note{color:#c4ceda;font-size:16px} section h2{font-size:26px} h3{font-size:20px}
+table{font-size:15px} th{color:#f0f6fc} td{color:#d0d9e3} .btn{font-size:15px}
+.code-line{font-size:14px}.code-line .src{font-size:12px}.hal-line{font-size:15px}.reg-cell{font-size:13.5px}
+.memdump{font-size:14px}.status{font-size:16px}.valcell .v{font-size:28px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">C 语言 · volatile</div>
+  <h1>volatile 全维度可视化教学演示</h1>
+  <div class="param-bar">
+    <span class="param">内核 <b>Cortex-M3</b></span>
+    <span class="param">编译器 <b>arm-none-eabi-gcc</b></span>
+    <span class="param">优化 <b>-O0 ~ -O3</b></span>
+    <span class="param">SRAM <b>0x2000 0000</b></span>
+    <span class="param">主频 <b>72MHz</b></span>
+  </div>
+  <p class="tip">四层机制逐个放大：内存访问 · 优化等级 · 调试器观察 · 中断共享变量</p>
+</header>
+
+<nav id="nav">
+  <a href="#s1" class="on">① 内存访问机制</a>
+  <a href="#s2">② 优化等级与读旧值</a>
+  <a href="#s3">③ 调试器观察变量</a>
+  <a href="#s4">④ 中断共享变量</a>
+</nav>
+
+<main>
+
+<!-- ================= 维度 1：内存存储与访问机制 ================= -->
+<section id="s1">
+  <div class="sec-head">
+    <span class="sec-num">01</span><h2>volatile 的内存存储与访问机制</h2>
+    <button class="tip-btn" data-tip="s1">💡</button>
+  </div>
+  <div class="takeaway" id="tip-s1"><b>volatile = 每次读都真去内存取，每次写都真写回内存。</b>它同时禁止编译器消除「看似无用」的读写（忙等、清零、轮询标志位）。</div>
+  <p class="sec-desc">同一个忙等循环，非 volatile 把 <span class="mono">LDRB</span> 提到循环外（只读一次），volatile 把 <span class="mono">LDRB</span> 留在循环内（每轮一次）。点「切换 volatile」，源码、反汇编、寄存器、内存四窗同步联动。</p>
+
+  <h3>ARM 汇编级对比：<span class="mono" style="color:var(--amber)">LDRB</span> 到底在哪一次？</h3>
+  <div class="grid2">
+    <div class="debug-panel">
+      <div class="ptitle">非 volatile · -O2 · 只读一次（<span style="color:var(--red)">有 bug</span>）</div>
+      <div id="s1cmpNon"></div>
+    </div>
+    <div class="debug-panel">
+      <div class="ptitle">volatile · -O2 · 每轮都读（<span style="color:var(--green)">正确</span>）</div>
+      <div id="s1cmpVol"></div>
+    </div>
+  </div>
+
+  <h3>亲手跑一遍 <span class="tag">四窗联动：源码 / 反汇编 / 寄存器 / 内存</span></h3>
+  <div class="controls">
+    <button class="btn primary" id="s1Step">⏭ 单步</button>
+    <button class="btn" id="s1Auto">▶ 自动播放</button>
+    <button class="btn warn" id="s1Ext">⚡ 外部写 flag=1</button>
+    <button class="btn" id="s1Reset">⟲ 复位</button>
+    <span style="margin-left:8px;color:var(--dim);font-size:12.5px">速度</span>
+    <input type="range" id="s1Speed" min="200" max="1500" value="600" step="100" style="width:110px">
+  </div>
+  <div class="grid2">
+    <div class="debug-panel">
+      <div class="ptitle">A · 反汇编（PC ▶ 当前行）</div>
+      <div id="s1asm"></div>
+    </div>
+    <div class="debug-panel">
+      <div class="ptitle">B · 寄存器窗口（值变化闪高亮）</div>
+      <div class="reg-grid" id="s1reg"></div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="debug-panel">
+      <div class="ptitle">C · C 源码（当前行高亮）
+        <span class="seg-toggle" style="margin-left:6px;vertical-align:middle">
+          <button id="s1VolOff" class="on">int flag</button>
+          <button id="s1VolOn">volatile int flag</button>
+        </span>
+      </div>
+      <div id="s1src"></div>
+    </div>
+    <div class="debug-panel">
+      <div class="ptitle">D · 内存窗口（SRAM 0x2000 0000 起）</div>
+      <div class="memdump" id="s1mem"></div>
+    </div>
+  </div>
+  <div class="status" id="s1status"><span class="hl">待命</span>先「单步」看 LDRB 在循环内还是外，再「外部写 flag=1」看寄存器会不会变。</div>
+
+  <h3>禁止消除「看似无用」的读写 <span class="tag">死存储消除 / 敏感数据清零</span></h3>
+  <p class="note">编译器默认把「写进去又没人读」的写当浪费删掉。这通常是优化，但当你写的是<b style="color:var(--text)">必须真正发生的安全擦除</b>时，就成了漏洞。</p>
+  <div class="grid2">
+    <div class="debug-panel">
+      <div class="ptitle">C 源码</div>
+      <div id="s1clrCode"></div>
+    </div>
+    <div class="debug-panel">
+      <div class="ptitle" id="s1clrTitle">非 volatile · -O2</div>
+      <div id="s1clrAsm"></div>
+      <div class="note" id="s1clrNote" style="font-family:inherit;margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="s1clrNon" style="border-color:var(--red);color:var(--red)">非 volatile（被删）</button>
+    <button class="btn" id="s1clrVol" style="border-color:var(--green);color:var(--green)">volatile（保留）</button>
+  </div>
+</section>
+
+<!-- ================= 维度 2：优化等级与寄存器读旧值 ================= -->
+<section id="s2">
+  <div class="sec-head">
+    <span class="sec-num">02</span><h2>O0 / O1 / O2 / O3 优化等级与「寄存器读旧值」</h2>
+    <button class="tip-btn" data-tip="s2">💡</button>
+  </div>
+  <div class="takeaway" id="tip-s2"><b>优化等级越高，编译器越倾向把内存变量缓存进寄存器。</b>一旦缓存，寄存器里的值就可能和内存「脱节」——这就是读旧值。O0 只是「没优化」看着像 volatile，不等于 volatile 语义。</div>
+  <p class="sec-desc">拖动优化等级，两个例子都实时重写反汇编并联动演示：例 1 看「读旧值」，例 2 看「循环展开 / 常量折叠」。</p>
+
+  <div class="stage">
+    <div class="controls" style="align-items:center">
+      <span style="color:var(--dim);font-size:14px">优化等级</span>
+      <input type="range" id="optSlider" min="0" max="3" value="0" step="1" style="width:200px">
+      <span id="optChips" style="display:flex;gap:6px"></span>
+    </div>
+    <div class="seg-toggle" style="margin-bottom:12px">
+      <button id="s2exA" class="on">例 1 · 读旧值（g_tick）</button>
+      <button id="s2exB">例 2 · 循环展开（sum）</button>
+    </div>
+
+    <!-- 例 1：读旧值 -->
+    <div id="s2exAPanel">
+      <div class="controls">
+        <button class="btn primary" id="s2aStep">⏭ 单步</button>
+        <button class="btn" id="s2aAuto">▶ 自动播放</button>
+        <button class="btn warn" id="s2aExt">⚡ 中断写 g_tick=1</button>
+        <button class="btn" id="s2aReset">⟲ 复位</button>
+      </div>
+      <div class="grid2">
+        <div class="debug-panel"><div class="ptitle">反汇编（随优化等级重写）</div><div id="s2aAsm"></div></div>
+        <div class="debug-panel"><div class="ptitle">寄存器窗口</div><div class="reg-grid" id="s2aReg"></div></div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="debug-panel"><div class="ptitle">C 源码（当前行高亮）</div><div id="s2aSrc"></div></div>
+        <div class="debug-panel"><div class="ptitle">内存窗口</div><div class="memdump" id="s2aMem"></div></div>
+      </div>
+      <div class="status" id="s2aStatus"></div>
+    </div>
+
+    <!-- 例 2：循环展开 -->
+    <div id="s2exBPanel" style="display:none">
+      <div class="controls">
+        <button class="btn primary" id="s2bStep">⏭ 单步</button>
+        <button class="btn" id="s2bAuto">▶ 自动播放</button>
+        <button class="btn" id="s2bReset">⟲ 复位</button>
+      </div>
+      <div class="grid2">
+        <div class="debug-panel"><div class="ptitle">反汇编（随优化等级重写）</div><div id="s2bAsm"></div></div>
+        <div class="debug-panel"><div class="ptitle">寄存器窗口</div><div class="reg-grid" id="s2bReg"></div></div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="debug-panel"><div class="ptitle">C 源码（当前行高亮）</div><div id="s2bSrc"></div></div>
+        <div class="debug-panel"><div class="ptitle">内存窗口（g_data 数组）</div><div class="memdump" id="s2bMem"></div></div>
+      </div>
+      <div class="status" id="s2bStatus"></div>
+    </div>
+
+    <div class="debug-panel" style="margin-top:12px">
+      <div class="ptitle">本等级关键特征</div>
+      <div class="note" id="s2features" style="font-family:inherit;margin:0"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 维度 3：调试器观察变量 ================= -->
+<section id="s3">
+  <div class="sec-head">
+    <span class="sec-num">03</span><h2>调试器全速运行时观察变量</h2>
+    <button class="tip-btn" data-tip="s3">💡</button>
+  </div>
+  <div class="takeaway" id="tip-s3"><b>volatile 是为了程序正确性；-O0 让所有变量看着像 volatile，只是为了调试一致性。</b>两者目的不同：一个保证运行期一定在内存，一个只是让调试器好显示。</div>
+  <p class="sec-desc">模拟一个调试器：源码与反汇编随 PC 同步高亮，Watch 窗口显示每个变量的真实状态——非 volatile 变量在 O1+ 下要么 <span style="color:var(--faint)">optimized away</span>、要么显示<b style="color:var(--amber)">过期的内存值</b>。</p>
+
+  <div class="debug-panel">
+    <div class="ptitle">调试器 · 全速运行</div>
+    <div class="controls" style="margin-top:6px">
+      <span style="color:var(--dim);font-size:13px">优化等级</span>
+      <span id="s3chips" style="display:flex;gap:6px"></span>
+      <button class="btn primary" id="s3Run">▶ 全速运行</button>
+      <button class="btn" id="s3StepTick">⏭ 走一步</button>
+    </div>
+    <div class="grid2">
+      <div class="debug-panel">
+        <div class="ptitle">C 源码（当前行高亮）</div>
+        <div id="s3src"></div>
+        <div class="ptitle" style="margin-top:10px">反汇编</div>
+        <div id="s3asm"></div>
+      </div>
+      <div>
+        <div class="tbl-wrap"><table class="watch-tbl">
+          <thead><tr><th>变量</th><th>类型</th><th>地址</th><th>值</th></tr></thead>
+          <tbody id="watchBody"></tbody>
+        </table></div>
+        <div class="debug-panel" style="margin-top:10px">
+          <div class="ptitle">内存 0x2000 0000 起</div>
+          <div class="memdump" id="s3mem"></div>
+          <div class="ptitle" style="margin-top:10px">寄存器快照（仅暂停时可见）</div>
+          <div class="memdump" id="s3reg"></div>
+        </div>
+      </div>
+    </div>
+    <div class="status" id="s3status"><span class="hl">已暂停</span>点「全速运行」，观察 Watch 窗口里哪些值在动、哪些 optimized away、哪些是过期值。</div>
+  </div>
+
+  <div class="tbl-wrap" style="margin-top:16px"><table>
+    <thead><tr><th>场景</th><th>volatile 变量</th><th>非 volatile（-O0）</th><th>非 volatile（-O1+）</th></tr></thead>
+    <tbody>
+      <tr><td><b>全速运行</b></td><td style="color:var(--green)">✓ 显示最新内存值</td><td style="color:var(--green)">✓ 显示内存值（没优化，看着像 volatile）</td><td style="color:var(--red)">✗ optimized away / 过期内存值</td></tr>
+      <tr><td><b>暂停</b></td><td style="color:var(--green)">✓ 正确</td><td style="color:var(--green)">✓ 正确</td><td style="color:var(--amber)">⚠ 可能仍是过期值（真值在寄存器里）</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b style="color:var(--text)">结论：</b><span class="mono volatile">volatile</span> 保证变量<b style="color:var(--text)">在语义上就必须驻留内存、每次真读真写</b>——这是运行期正确性。-O0 只是「禁用优化」让变量暂时都放内存方便调试，<b style="color:var(--text)">不提供跨中断/跨上下文的语义保证</b>。</p>
+</section>
+
+<!-- ================= 维度 4：中断修改 volatile 变量 ================= -->
+<section id="s4">
+  <div class="sec-head">
+    <span class="sec-num">04</span><h2>中断修改 volatile 变量的机制</h2>
+    <button class="tip-btn" data-tip="s4">💡</button>
+  </div>
+  <div class="takeaway" id="tip-s4"><b>中断写内存、主循环读寄存器——两边各说各话。</b>共享变量不加 volatile，主循环可能永远卡死在旧值上；加了 volatile，每轮判断都重新读内存。</div>
+  <p class="sec-desc">嵌入式最经典的「中断置标志位」模式。源码、反汇编、寄存器、内存四窗联动；点「触发中断」看 ISR 写内存后主循环到底能不能读到。</p>
+
+  <div class="controls">
+    <button class="btn primary" id="s4Step">⏭ 单步</button>
+    <button class="btn" id="s4Auto">▶ 自动播放</button>
+    <button class="btn warn" id="s4Irq">⚡ 触发中断 ISR</button>
+    <button class="btn" id="s4Reset">⟲ 复位</button>
+    <span style="margin-left:8px;color:var(--dim);font-size:12.5px">速度</span>
+    <input type="range" id="s4Speed" min="200" max="1500" value="600" step="100" style="width:110px">
+  </div>
+  <div class="grid2">
+    <div class="debug-panel"><div class="ptitle">A · 反汇编 · main()</div><div id="s4asm"></div></div>
+    <div class="debug-panel">
+      <div class="ptitle">B · 寄存器窗口</div>
+      <div class="reg-grid" id="s4reg"></div>
+      <div class="ptitle" style="margin-top:12px">do_something() 执行次数</div>
+      <div class="valcell" style="margin-top:6px"><div class="v" id="s4doCount" style="color:var(--green)">0</div></div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="debug-panel">
+      <div class="ptitle">C · C 源码（当前行高亮）
+        <span class="seg-toggle" style="margin-left:6px;vertical-align:middle">
+          <button id="s4VolOff" class="on">int flag</button>
+          <button id="s4VolOn">volatile int flag</button>
+        </span>
+      </div>
+      <div id="s4src"></div>
+      <div class="ptitle" style="margin-top:10px">ISR 反汇编（触发中断时闪动）</div>
+      <div id="s4isrAsm"></div>
+    </div>
+    <div class="debug-panel">
+      <div class="ptitle">D · 内存窗口</div>
+      <div class="memdump" id="s4mem"></div>
+    </div>
+  </div>
+  <div class="status" id="s4status"><span class="hl">待命</span>先「触发中断」让 ISR 把 flag 写 1，再「单步」主循环看它能不能读到。</div>
+</section>
+
+</main>
+
+<footer>STM32F103C8T6 · volatile 全维度可视化教学演示 · 单文件 · 无外部依赖 · 双击即可打开</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   通用工具
+   ===================================================================== */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function hx(n,w){ return (n>>>0).toString(16).toUpperCase().padStart(w||8,'0'); }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* C 语法高亮 */
+function cHtml(line){
+  let code=line, com='';
+  const ci=line.indexOf('//');
+  if(ci>=0){ code=line.slice(0,ci); com=line.slice(ci); }
+  code=esc(code);
+  code=code.replace(/\bvolatile\b/g,'<span class="volatile">volatile</span>');
+  code=code.replace(/\b(int|char|void|unsigned|uint8_t|uint32_t|uint16_t|long|short|const|static|extern|struct|for|while|if|else|return|signed)\b/g,'<span class="kw">$1</span>');
+  code=code.replace(/([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g,'<span class="fn">$1</span>');
+  code=code.replace(/(\d+)/g,'<span class="num">$1</span>');
+  return code + (com ? '<span class="com">'+esc(com)+'</span>' : '');
+}
+
+/* 汇编语法高亮 */
+function asmHtml(line){
+  let code=line, com='';
+  const ci=line.indexOf(';');
+  if(ci>=0){ code=line.slice(0,ci); com=line.slice(ci); }
+  code=esc(code);
+  code=code.replace(/^(\s*)([.\w][\w:]*:)/, (m,p1,p2)=> p1+'<span class="lbl">'+p2+'</span>');
+  code=code.replace(/\b(LDRB|LDRH|LDRD|LDR|STRB|STRH|STRD|STR|CMP|CMN|TEQ|TST|BEQ|BNE|BGT|BLT|BGE|BLE|BHI|BLS|BHS|BLO|B|MOV|MOVS|MVN|ADD|ADDS|ADC|SUB|SUBS|SBC|RSB|MUL|LSL|LSR|ASR|ROR|AND|ANDS|ORR|ORRS|EOR|EORS|BIC|PUSH|POP|BL|BX|LDMIA|LDMDB|STMIA|STMDB|CBZ|CBNZ|UXTB|UXTH|NOP|WFE|WFI|SEV|IT|MRS|MSR)\b/g,'<span class="mne">$1</span>');
+  code=code.replace(/\b(r(?:[0-9]|1[0-5])|sp|lr|pc|xpsr)\b/gi,'<span class="reg">$1</span>');
+  code=code.replace(/(#[-+]?0x[0-9a-fA-F]+|#[-+]?\d+|0x[0-9a-fA-F]+)/g,'<span class="imm">$1</span>');
+  return code + (com ? '<span class="com">'+esc(com)+'</span>' : '');
+}
+
+/* 渲染反汇编（code-line，含 PC 箭头 + 源码列） */
+function renderCodeWin(el, instrs, ci, hlIdx){
+  el.innerHTML='';
+  instrs.forEach((ins,i)=>{
+    if(ins.type==='label'){ const d=document.createElement('div'); d.className='lbl-line'; d.textContent=ins.lab; el.appendChild(d); return; }
+    const d=document.createElement('div');
+    d.className='code-line'+(i===ci?' cur':'')+((hlIdx||[]).includes(i)?' hl':'');
+    d.innerHTML='<span class="addr">'+(i===ci?'▶ ':'')+(ins.a?'0x'+ins.a:'')+'</span><span class="mc">'+ins.c+'</span><span class="asm">'+asmHtml(ins.asm)+'</span><span class="src">'+ins.src+'</span>';
+    el.appendChild(d);
+  });
+}
+
+/* 渲染 C 源码（hal-line，含行号 + 当前行高亮） */
+function renderSrcWin(el, lines, hi){
+  el.innerHTML='';
+  lines.forEach((src,i)=>{
+    const d=document.createElement('div');
+    d.className='hal-line'+(i===hi?' cur':'');
+    d.innerHTML='<span class="ln">'+(i+1)+'</span><span class="code">'+cHtml(src)+'</span>';
+    el.appendChild(d);
+  });
+}
+
+/* 渲染寄存器窗口（值变化闪高亮，按网格记忆上次显示值） */
+const _regLast={};
+function renderRegGrid(el, regs){
+  const last=_regLast[el.id]||(_regLast[el.id]={});
+  el.innerHTML='';
+  regs.forEach(([n,v])=>{
+    const cell=document.createElement('div'); cell.className='reg-cell';
+    if(last[n]!==undefined && last[n]!==v) cell.classList.add('flash');
+    last[n]=v;
+    cell.innerHTML='<span class="rn">'+n+'</span><span class="rv">'+v+'</span>';
+    el.appendChild(cell);
+  });
+}
+
+/* 滚动淡入 + 导航高亮 + 💡 */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='none';io.unobserve(e.target);}}),{threshold:0.05});
+$$('section').forEach(s=>{s.style.opacity='0';s.style.transform='translateY(24px)';s.style.transition='opacity .6s,transform .6s';io.observe(s);});
+const navIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){$$('#nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id));}}),{rootMargin:'-45% 0px -50% 0px'});
+$$('section').forEach(s=>navIO.observe(s));
+$$('.tip-btn').forEach(b=>b.onclick=()=>{document.getElementById('tip-'+b.dataset.tip).classList.toggle('show');});
+
+/* =====================================================================
+   维度 1：内存访问机制（四窗联动模拟器）
+   ===================================================================== */
+const FLAG_ADDR=0x20000000;
+const S1_PROG = {
+  nonvol: [
+    {a:'08000100',c:'4801',asm:'LDR  r0, =flag',     src:'main.c:3',s:2,type:'ldr-lit'},
+    {a:'08000102',c:'7800',asm:'LDRB r0, [r0]',      src:'main.c:3',s:2,type:'ldrb'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000104',c:'2800',asm:'CMP  r0, #0',        src:'main.c:3',s:2,type:'cmp'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',         src:'main.c:3',s:2,type:'beq',t:2,f:5},
+    {a:'08000108',c:'F7FFF801',asm:'BL   do_work',   src:'main.c:6',s:5,type:'bl'},
+  ],
+  vol: [
+    {a:'08000100',c:'4801',asm:'LDR  r0, =flag',     src:'main.c:3',s:2,type:'ldr-lit'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000102',c:'7800',asm:'LDRB r0, [r0]',      src:'main.c:3',s:2,type:'ldrb'},
+    {a:'08000104',c:'2800',asm:'CMP  r0, #0',        src:'main.c:3',s:2,type:'cmp'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',         src:'main.c:3',s:2,type:'beq',t:1,f:5},
+    {a:'08000108',c:'F7FFF801',asm:'BL   do_work',   src:'main.c:6',s:5,type:'bl'},
+  ],
+};
+const S1={vol:false,r0:null,r1:null,z:true,flag:0,idx:0,done:false,timer:null,steps:0};
+function s1prog(){ return S1.vol?S1_PROG.vol:S1_PROG.nonvol; }
+function s1srcLines(){
+  return [
+    'int'+ (S1.vol?' volatile':'') + ' flag = 0;',
+    'void main(void) {',
+    '  while (flag == 0) {',
+    '    /* 忙等，什么都不做 */',
+    '  }',
+    '  do_work();',
+    '}',
+  ];
+}
+function s1step(){
+  const p=s1prog();
+  if(S1.done || S1.idx>=p.length) return;
+  const ins=p[S1.idx];
+  const prev={R0:S1.r0,R1:S1.r1,Z:S1.z?'1':'0'};
+  if(ins.type==='label'){ S1.idx++; renderS1(prev); return; }
+  let next=S1.idx+1;
+  if(ins.type==='ldr-lit'){ S1.r1=FLAG_ADDR; }
+  else if(ins.type==='ldrb'){ S1.r0=S1.flag; }
+  else if(ins.type==='cmp'){ S1.z=(S1.r0===0); }
+  else if(ins.type==='beq'){ next=S1.z?ins.t:ins.f; }
+  else if(ins.type==='bl'){ S1.done=true; next=S1.idx; }
+  S1.idx=next; S1.steps++;
+  renderS1(prev);
+}
+function s1setVol(v){
+  stopS1auto();
+  S1.vol=v; S1.r0=null; S1.r1=null; S1.z=true; S1.flag=0; S1.idx=0; S1.done=false; S1.steps=0;
+  $('#s1VolOn').classList.toggle('on',v); $('#s1VolOff').classList.toggle('on',!v);
+  renderS1();
+}
+function s1ext(){ S1.flag=1; stopS1auto(); renderS1(); }
+function stopS1auto(){ if(S1.timer){clearInterval(S1.timer);S1.timer=null;} $('#s1Auto').textContent='▶ 自动播放'; }
+function s1auto(){
+  if(S1.timer){ stopS1auto(); return; }
+  $('#s1Auto').textContent='⏹ 停止'; let n=0;
+  S1.timer=setInterval(()=>{
+    s1step(); n++;
+    const stuck = !S1.vol && S1.flag===1 && S1.r0===0 && S1.idx>=2;
+    if(S1.done || stuck || n>=40) stopS1auto();
+  }, parseInt($('#s1Speed').value));
+}
+function renderS1(prev){
+  const p=s1prog();
+  renderCodeWin($('#s1asm'), p, S1.idx, S1.vol?[2]:[1]);
+  // 源码高亮：done 指向 do_work；否则取当前指令的 s
+  let hi = S1.done ? 5 : (p[S1.idx] ? (p[S1.idx].s ?? 2) : 2);
+  renderSrcWin($('#s1src'), s1srcLines(), hi);
+  // 寄存器
+  renderRegGrid($('#s1reg'), [
+    ['R0', S1.r0===null?'—':'0x'+hx(S1.r0)],
+    ['R1', S1.r1===null?'—':'0x'+hx(S1.r1)],
+    ['Z',  S1.z?'1':'0'],
+  ], prev);
+  // 内存
+  const stale = !S1.vol && S1.flag===1 && S1.r0===0;
+  $('#s1mem').innerHTML =
+    '0x2000 0000  flag = 0x'+hx(S1.flag)+'   ← 内存里的 flag\n'+
+    (S1.flag===1 ? '<span class="live">  外部已写入 1</span>' : '<span class="stale">  初始为 0</span>')+
+    (stale ? '\n<span class="warn">  ⚠ R0 仍是旧值 0，没读到这里！</span>' : '');
+  // 状态
+  const st=$('#s1status');
+  if(S1.done){ st.className='status ok'; st.innerHTML='<span class="okc">✓ 跳出循环！</span>读到 flag=1，执行 do_work。这就是 volatile 每次真读内存的效果。'; }
+  else if(stale){ st.className='status warn'; st.innerHTML='<span class="bad">✗ 读旧值！</span>内存 flag=1，但 R0 还是 0，<span class="mono">CMP</span> 永远比较旧值、<span class="mono">BEQ</span> 永远跳回，循环出不去。'; }
+  else if(S1.vol && S1.flag===1 && S1.r0===1){ st.className='status ok'; st.innerHTML='<span class="okc">✓</span>R0 重新读内存拿到 1，下一步 <span class="mono">BEQ</span> 不再跳回，将执行 do_work。'; }
+  else if(S1.vol){ st.className='status'; st.innerHTML='<span class="hl">volatile 模式</span>每轮 <span class="mono">LDRB</span> 都重新读内存（注意 PC 停在循环体内）。试试「外部写 flag=1」再单步。'; }
+  else if(S1.r0===null){ st.className='status'; st.innerHTML='<span class="hl">非 volatile 模式</span>先「单步」两次（<span class="mono">LDR</span> + <span class="mono">LDRB</span>）把 flag 读进 R0，再点「外部写 flag=1」，看 R0 会不会自动更新。'; }
+  else { st.className='status'; st.innerHTML='<span class="hl">非 volatile 模式</span><span class="mono">LDRB</span> 只在循环前执行一次。点「外部写 flag=1」后，寄存器不会自动更新。'; }
+}
+$('#s1Step').onclick=()=>{ stopS1auto(); s1step(); };
+$('#s1Auto').onclick=s1auto;
+$('#s1Ext').onclick=s1ext;
+$('#s1Reset').onclick=()=>{ stopS1auto(); S1.r0=null;S1.r1=null;S1.z=true;S1.flag=0;S1.idx=0;S1.done=false;S1.steps=0; renderS1(); };
+$('#s1VolOn').onclick=()=>s1setVol(true);
+$('#s1VolOff').onclick=()=>s1setVol(false);
+
+/* 维度1 静态对比 */
+(function(){
+  const non=[
+    {a:'08000100',c:'4801',asm:'LDR  r0, =flag',src:'main.c:3'},
+    {a:'08000102',c:'7800',asm:'LDRB r0, [r0]',src:'main.c:3'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000104',c:'2800',asm:'CMP  r0, #0',src:'main.c:3'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',src:'main.c:3'},
+  ];
+  const vol=[
+    {a:'08000100',c:'4801',asm:'LDR  r0, =flag',src:'main.c:3'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000102',c:'7800',asm:'LDRB r0, [r0]',src:'main.c:3'},
+    {a:'08000104',c:'2800',asm:'CMP  r0, #0',src:'main.c:3'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',src:'main.c:3'},
+  ];
+  renderCodeWin($('#s1cmpNon'), non, -1, [1]);
+  renderCodeWin($('#s1cmpVol'), vol, -1, [2]);
+})();
+
+/* 维度1 清零示例 */
+const CLEAR={
+  non:{ title:'非 volatile · -O2 · 清零循环被删除',
+    asm:[
+      {a:'08000100',c:'B508',asm:'PUSH {lr}'},
+      {a:'08000102',c:'F7FF..',asm:'... use(key) ...',src:'main.c:3'},
+      {a:'08000106',c:'BD00',asm:'POP  {pc}',src:'main.c:6'},
+    ],
+    note:'编译器认为 <span class="mono">key[]</span> 马上出栈、再没人读，把「写 0」当<b style="color:var(--red)">死存储（dead store）</b>整段删除。密码残留在内存！' },
+  vol:{ title:'volatile · -O2 · 清零被保留',
+    asm:[
+      {a:'08000100',c:'B508',asm:'PUSH {lr}'},
+      {a:'08000102',c:'F7FF..',asm:'... use(key) ...',src:'main.c:3'},
+      {a:'08000106',c:'2000',asm:'MOVS r0, #0'},
+      {a:'08000108',c:'2100',asm:'MOVS r1, #0',src:'main.c:5'},
+      {type:'label',lab:'.L2:'},
+      {a:'0800010A',c:'7010',asm:'STRB r0, [r2, r1]',src:'main.c:5'},
+      {a:'0800010C',c:'3101',asm:'ADD  r1, #1'},
+      {a:'0800010E',c:'2910',asm:'CMP  r1, #16'},
+      {a:'08000110',c:'D1FB',asm:'BNE  .L2'},
+      {a:'08000112',c:'BD00',asm:'POP  {pc}'},
+    ],
+    note:'<span class="mono">volatile</span> 声明「每次写都必须发生」，编译器不敢删，<b style="color:var(--green)">16 次写 0 全部保留</b>，密码被真正擦掉。' },
+};
+let s1clr='non';
+function renderClear(){
+  const c=CLEAR[s1clr];
+  $('#s1clrTitle').textContent=c.title;
+  renderCodeWin($('#s1clrAsm'), c.asm, -1, []);
+  $('#s1clrNote').innerHTML=c.note;
+  $('#s1clrCode').innerHTML =
+    (s1clr==='vol' ? cHtml('volatile char key[16] = "SECRET";') : cHtml('char key[16] = "SECRET";')) + '<br>' +
+    cHtml('use(key);') + '<br>' +
+    cHtml('for (int i=0; i<16; i++) key[i]=0;   // 擦除');
+}
+$('#s1clrNon').onclick=()=>{ s1clr='non'; renderClear(); };
+$('#s1clrVol').onclick=()=>{ s1clr='vol'; renderClear(); };
+
+/* =====================================================================
+   维度 2：优化等级（两个联动模拟器）
+   ===================================================================== */
+const OLEVELS=[
+  {id:0,name:'O0',lvl:'无优化', features:'<b style="color:var(--text)">直译式</b>：每次访问都真读内存 / 真写内存，变量基本都留在内存。所以<b style="color:var(--amber)">看起来像 volatile</b>——但这只是「没优化」，不是语义保证。'},
+  {id:1,name:'O1',lvl:'基本优化', features:'<b style="color:var(--text)">寄存器分配</b>：循环里不变的变量被<b style="color:var(--amber)">提升出循环</b>、装进寄存器，从此只比较寄存器，内存变了也看不见。'},
+  {id:2,name:'O2',lvl:'激进优化', features:'<b style="color:var(--text)">循环不变量 + 常量传播</b>：提升更彻底，甚至把能算死的循环直接算出常量（例 2 的 sum 直接变 10，循环消失）。'},
+  {id:3,name:'O3',lvl:'极致优化', features:'<b style="color:var(--text)">循环展开 + 软件流水线</b>：例 2 的循环被「展开」成直线代码、多发射并行。缓存进寄存器的变量与内存「脱节」的风险最大。'},
+];
+const S2={level:0,example:0};
+
+/* ---- 例 1：读旧值 g_tick ---- */
+const S2A_SRC=[
+  'int g_tick = 0;            // 非 volatile',
+  'void main_loop(void) {',
+  '  for (;;) {',
+  '    if (g_tick) {',
+  '      process(g_tick);',
+  '      g_tick = 0;',
+  '    }',
+  '  }',
+  '}',
+];
+const S2A_PROG={
+  O0:[
+    {a:'08000100',c:'4801',asm:'LDR  r4, =g_tick',src:'main.c:4',s:3,type:'ldrlit4'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000102',c:'6820',asm:'LDR  r0, [r4]',src:'main.c:4',s:3,type:'ldrmem_r0'},
+    {a:'08000104',c:'2800',asm:'CMP  r0, #0',src:'main.c:4',s:3,type:'cmp_r0'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',src:'main.c:4',s:3,type:'beq',t:1,f:5},
+    {a:'08000108',c:'6820',asm:'LDR  r0, [r4]',src:'main.c:5',s:4,type:'ldrmem_r0'},
+    {a:'0800010A',c:'4601',asm:'MOV  r1, r0',src:'main.c:5',s:4,type:'mov_r1_r0'},
+    {a:'0800010C',c:'F7FF..',asm:'BL   process',src:'main.c:5',s:4,type:'bl_process'},
+    {a:'08000110',c:'2000',asm:'MOVS r0, #0',src:'main.c:6',s:5,type:'movs_r0_0'},
+    {a:'08000112',c:'6008',asm:'STR  r0, [r4]',src:'main.c:6',s:5,type:'str_r0'},
+    {a:'08000114',c:'E7F5',asm:'B    .loop',src:'main.c:3',s:2,type:'jump',t:1},
+  ],
+  O1:[
+    {a:'08000100',c:'4801',asm:'LDR  r4, =g_tick',src:'main.c:4',s:3,type:'ldrlit4'},
+    {a:'08000102',c:'6825',asm:'LDR  r5, [r4]',src:'main.c:4',s:3,type:'ldrmem_r5'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000104',c:'2D00',asm:'CMP  r5, #0',src:'main.c:4',s:3,type:'cmp_r5'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',src:'main.c:4',s:3,type:'beq',t:2,f:5},
+    {a:'08000108',c:'4628',asm:'MOV  r0, r5',src:'main.c:5',s:4,type:'mov_r0_r5'},
+    {a:'0800010A',c:'F7FF..',asm:'BL   process',src:'main.c:5',s:4,type:'bl_process'},
+    {a:'0800010E',c:'2500',asm:'MOVS r5, #0',src:'main.c:6',s:5,type:'movs_r5_0'},
+    {a:'08000110',c:'6025',asm:'STR  r5, [r4]',src:'main.c:6',s:5,type:'str_r5'},
+    {a:'08000112',c:'E7F7',asm:'B    .loop',src:'main.c:3',s:2,type:'jump',t:2},
+  ],
+  O2:[
+    {a:'08000100',c:'4801',asm:'LDR  r4, =g_tick',src:'main.c:4',s:3,type:'ldrlit4'},
+    {a:'08000102',c:'6825',asm:'LDR  r5, [r4]',src:'main.c:4',s:3,type:'ldrmem_r5'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000104',c:'2D00',asm:'CMP  r5, #0',src:'main.c:4',s:3,type:'cmp_r5'},
+    {a:'08000106',c:'D101',asm:'BNE  .L3',src:'main.c:4',s:3,type:'bne',t:7,f:5},
+    {a:'08000108',c:'BF20',asm:'WFI',src:'main.c:4',s:3,type:'wfi'},
+    {a:'0800010A',c:'E7FB',asm:'B    .loop',src:'main.c:4',s:3,type:'jump',t:2},
+    {type:'label',lab:'.L3:'},
+    {a:'0800010C',c:'4628',asm:'MOV  r0, r5',src:'main.c:5',s:4,type:'mov_r0_r5'},
+    {a:'0800010E',c:'F7FF..',asm:'BL   process',src:'main.c:5',s:4,type:'bl_process'},
+    {a:'08000112',c:'2500',asm:'MOVS r5, #0',src:'main.c:6',s:5,type:'movs_r5_0'},
+    {a:'08000114',c:'6025',asm:'STR  r5, [r4]',src:'main.c:6',s:5,type:'str_r5'},
+    {a:'08000116',c:'E7F5',asm:'B    .loop',src:'main.c:3',s:2,type:'jump',t:2},
+  ],
+  O3:[
+    {a:'08000100',c:'4801',asm:'LDR  r4, =g_tick',src:'main.c:4',s:3,type:'ldrlit4'},
+    {a:'08000102',c:'6825',asm:'LDR  r5, [r4]',src:'main.c:4',s:3,type:'ldrmem_r5'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000104',c:'2D00',asm:'CMP  r5, #0',src:'main.c:4',s:3,type:'cmp_r5'},
+    {a:'08000106',c:'D101',asm:'BNE  .L3',src:'main.c:4',s:3,type:'bne',t:7,f:5},
+    {a:'08000108',c:'BF20',asm:'WFI',src:'main.c:4',s:3,type:'wfi'},
+    {a:'0800010A',c:'E7FB',asm:'B    .loop',src:'main.c:4',s:3,type:'jump',t:2},
+    {type:'label',lab:'.L3:'},
+    {a:'0800010C',c:'4628',asm:'MOV  r0, r5',src:'main.c:5',s:4,type:'mov_r0_r5'},
+    {a:'0800010E',c:'F7FF..',asm:'BL   process',src:'main.c:5',s:4,type:'bl_process'},
+    {a:'08000112',c:'2500',asm:'MOVS r5, #0',src:'main.c:6',s:5,type:'movs_r5_0'},
+    {a:'08000114',c:'6025',asm:'STR  r5, [r4]',src:'main.c:6',s:5,type:'str_r5'},
+    {a:'08000116',c:'E7F5',asm:'B    .loop',src:'main.c:3',s:2,type:'jump',t:2},
+  ],
+};
+const S2A={r0:null,r1:null,r4:null,r5:null,mem:0,z:true,calls:0,idx:0,done:false,timer:null};
+function s2aProg(){ const key=['O0','O1','O2','O3'][S2.level]; return S2A_PROG[key]; }
+function s2aStep(){
+  const p=s2aProg();
+  if(S2A.done||S2A.idx>=p.length) return;
+  const ins=p[S2A.idx];
+  const prev={R0:S2A.r0,R4:S2A.r4,R5:S2A.r5,mem:S2A.mem};
+  if(ins.type==='label'){ S2A.idx++; renderS2A(prev); return; }
+  let next=S2A.idx+1;
+  switch(ins.type){
+    case 'ldrlit4': S2A.r4=FLAG_ADDR; break;
+    case 'ldrmem_r0': S2A.r0=S2A.mem; break;
+    case 'ldrmem_r5': S2A.r5=S2A.mem; break;
+    case 'cmp_r0': S2A.z=(S2A.r0===0); break;
+    case 'cmp_r5': S2A.z=(S2A.r5===0); break;
+    case 'beq': next=S2A.z?ins.t:ins.f; break;
+    case 'bne': next=S2A.z?ins.f:ins.t; break;
+    case 'wfi': break;
+    case 'mov_r1_r0': S2A.r1=S2A.r0; break;
+    case 'mov_r0_r5': S2A.r0=S2A.r5; break;
+    case 'bl_process': S2A.calls++; break;
+    case 'movs_r0_0': S2A.r0=0; break;
+    case 'movs_r5_0': S2A.r5=0; break;
+    case 'str_r0': S2A.mem=S2A.r0; break;
+    case 'str_r5': S2A.mem=S2A.r5; break;
+    case 'jump': next=ins.t; break;
+  }
+  S2A.idx=next; renderS2A(prev);
+}
+function s2aReset(){ stopS2Aauto(); S2A.r0=null;S2A.r1=null;S2A.r4=null;S2A.r5=null;S2A.mem=0;S2A.z=true;S2A.calls=0;S2A.idx=0;S2A.done=false; renderS2A(); }
+function s2aExt(){ S2A.mem=1; stopS2Aauto(); renderS2A(); }
+function stopS2Aauto(){ if(S2A.timer){clearInterval(S2A.timer);S2A.timer=null;} $('#s2aAuto').textContent='▶ 自动播放'; }
+function s2aAuto(){ if(S2A.timer){stopS2Aauto();return;} $('#s2aAuto').textContent='⏹ 停止'; let n=0;
+  S2A.timer=setInterval(()=>{ s2aStep(); n++; if(S2A.done||n>=40) stopS2Aauto(); }, 500); }
+function renderS2A(prev){
+  const p=s2aProg();
+  const hoisted=S2.level>0;
+  renderCodeWin($('#s2aAsm'), p, S2A.idx, hoisted?[1]:[2]);
+  renderSrcWin($('#s2aSrc'), S2A_SRC, p[S2A.idx]?(p[S2A.idx].s):3);
+  renderRegGrid($('#s2aReg'), [
+    ['R0', S2A.r0===null?'—':'0x'+hx(S2A.r0)],
+    ['R4', S2A.r4===null?'—':'0x'+hx(S2A.r4)],
+    ['R5', S2A.r5===null?'—':'0x'+hx(S2A.r5)],
+  ], prev);
+  const stale = hoisted && S2A.mem===1 && S2A.r5===0;
+  $('#s2aMem').innerHTML =
+    '0x2000 0000  g_tick = 0x'+hx(S2A.mem)+'\n'+
+    (S2A.mem===1?'<span class="live">  ← 中断已写入 1</span>':'<span class="stale">  ← 初始 0</span>')+
+    (stale?'\n<span class="warn">  ⚠ R5 仍缓存旧值 0！</span>':'')+
+    '\n\nprocess 调用次数 = '+S2A.calls;
+  const st=$('#s2aStatus');
+  if(!hoisted){
+    st.className='status';
+    st.innerHTML='<span class="hl">O0</span>每轮 <span class="mono">LDR r0,[r4]</span> 真读内存（PC 在循环内）。点「中断写 g_tick=1」后下一轮就能读到——但这只是没优化，不是 volatile。';
+  }else if(S2A.r5===null){
+    st.className='status';
+    st.innerHTML='<span class="hl">O'+S2.level+'</span>先「单步」两次，把 <span class="mono">g_tick</span> 装进 R5（<span class="mono">LDR r5,[r4]</span> 在循环外），再点「中断写 g_tick=1」看它会不会更新。';
+  }else if(stale){
+    st.className='status warn';
+    st.innerHTML='<span class="bad">✗ 读旧值！</span><span class="mono">g_tick</span> 被提升进 R5（循环外只读一次），中断把内存写成 1，CPU 却只比较 R5=0。内存与寄存器已「脱节」。';
+  }else{
+    st.className='status';
+    st.innerHTML='<span class="hl">O'+S2.level+'</span><span class="mono">g_tick</span> 已装进 R5=0。点「中断写 g_tick=1」看内存变了、寄存器却没变。';
+  }
+}
+$('#s2aStep').onclick=()=>{ stopS2Aauto(); s2aStep(); };
+$('#s2aAuto').onclick=s2aAuto;
+$('#s2aExt').onclick=s2aExt;
+$('#s2aReset').onclick=s2aReset;
+
+/* ---- 例 2：循环展开 sum ---- */
+const GDATA=[1,2,3,4];
+const S2B_SRC=[
+  'int g_data[4] = {1, 2, 3, 4};',
+  'int compute(void) {',
+  '  int sum = 0;',
+  '  for (int i = 0; i < 4; i++) {',
+  '    sum += g_data[i];',
+  '  }',
+  '  sink(sum);',
+  '  return sum;',
+  '}',
+];
+const S2B_PROG={
+  O0:[
+    {a:'08000100',c:'2000',asm:'MOVS r0, #0',src:'main.c:3',s:2,type:'movs_r0_0'},
+    {a:'08000102',c:'2100',asm:'MOVS r1, #0',src:'main.c:4',s:3,type:'movs_r1_0'},
+    {a:'08000104',c:'4806',asm:'LDR  r4, =g_data',src:'main.c:4',s:3,type:'ldrlit4'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000106',c:'5842',asm:'LDR  r2, [r4, r1, LSL #2]',src:'main.c:5',s:4,type:'ldr_idx'},
+    {a:'08000108',c:'1880',asm:'ADD  r0, r0, r2',src:'main.c:5',s:4,type:'add_r0_r2'},
+    {a:'0800010A',c:'3101',asm:'ADD  r1, r1, #1',src:'main.c:4',s:3,type:'add_r1_1'},
+    {a:'0800010C',c:'2904',asm:'CMP  r1, #4',src:'main.c:4',s:3,type:'cmp_r1_4'},
+    {a:'0800010E',c:'DBFA',asm:'BLT  .loop',src:'main.c:4',s:3,type:'blt',t:3,f:9},
+    {a:'08000110',c:'4603',asm:'MOV  r3, r0',src:'main.c:7',s:6,type:'mov_r3_r0'},
+    {a:'08000112',c:'F7FF..',asm:'BL   sink',src:'main.c:7',s:6,type:'bl_sink'},
+    {a:'08000116',c:'4770',asm:'BX   lr',src:'main.c:8',s:7,type:'bx'},
+  ],
+  O1:[
+    {a:'08000100',c:'2000',asm:'MOVS r0, #0',src:'main.c:3',s:2,type:'movs_r0_0'},
+    {a:'08000102',c:'2100',asm:'MOVS r1, #0',src:'main.c:4',s:3,type:'movs_r1_0'},
+    {a:'08000104',c:'4806',asm:'LDR  r4, =g_data',src:'main.c:4',s:3,type:'ldrlit4'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000106',c:'5842',asm:'LDR  r2, [r4, r1, LSL #2]',src:'main.c:5',s:4,type:'ldr_idx'},
+    {a:'08000108',c:'1880',asm:'ADD  r0, r0, r2',src:'main.c:5',s:4,type:'add_r0_r2'},
+    {a:'0800010A',c:'3101',asm:'ADD  r1, r1, #1',src:'main.c:4',s:3,type:'add_r1_1'},
+    {a:'0800010C',c:'2904',asm:'CMP  r1, #4',src:'main.c:4',s:3,type:'cmp_r1_4'},
+    {a:'0800010E',c:'DBFA',asm:'BLT  .loop',src:'main.c:4',s:3,type:'blt',t:3,f:9},
+    {a:'08000110',c:'4603',asm:'MOV  r3, r0',src:'main.c:7',s:6,type:'mov_r3_r0'},
+    {a:'08000112',c:'F7FF..',asm:'BL   sink',src:'main.c:7',s:6,type:'bl_sink'},
+    {a:'08000116',c:'4770',asm:'BX   lr',src:'main.c:8',s:7,type:'bx'},
+  ],
+  O2:[
+    {a:'08000100',c:'200A',asm:'MOVS r0, #10',src:'main.c:3',s:2,type:'movs_r0_10'},
+    {a:'08000102',c:'4603',asm:'MOV  r3, r0',src:'main.c:7',s:6,type:'mov_r3_r0'},
+    {a:'08000104',c:'F7FF..',asm:'BL   sink',src:'main.c:7',s:6,type:'bl_sink'},
+    {a:'08000108',c:'4770',asm:'BX   lr',src:'main.c:8',s:7,type:'bx'},
+  ],
+  O3:[
+    {a:'08000100',c:'4803',asm:'LDR  r4, =g_data',src:'main.c:4',s:3,type:'ldrlit4'},
+    {a:'08000102',c:'6821',asm:'LDR  r1, [r4]',src:'main.c:5',s:4,type:'ldr_r1'},
+    {a:'08000104',c:'6862',asm:'LDR  r2, [r4, #4]',src:'main.c:5',s:4,type:'ldr_r2_4'},
+    {a:'08000106',c:'68A3',asm:'LDR  r3, [r4, #8]',src:'main.c:5',s:4,type:'ldr_r3_8'},
+    {a:'08000108',c:'1889',asm:'ADD  r1, r1, r2',src:'main.c:5',s:4,type:'add_r1_r2'},
+    {a:'0800010A',c:'68E2',asm:'LDR  r2, [r4, #12]',src:'main.c:5',s:4,type:'ldr_r2_12'},
+    {a:'0800010C',c:'18CB',asm:'ADD  r1, r1, r3',src:'main.c:5',s:4,type:'add_r1_r3'},
+    {a:'0800010E',c:'1888',asm:'ADD  r0, r1, r2',src:'main.c:5',s:4,type:'add_r0_r1r2'},
+    {a:'08000110',c:'4603',asm:'MOV  r3, r0',src:'main.c:7',s:6,type:'mov_r3_r0'},
+    {a:'08000112',c:'F7FF..',asm:'BL   sink',src:'main.c:7',s:6,type:'bl_sink'},
+    {a:'08000116',c:'4770',asm:'BX   lr',src:'main.c:8',s:7,type:'bx'},
+  ],
+};
+const S2B={r0:null,r1:null,r2:null,r3:null,r4:null,lt:false,calls:0,idx:0,done:false,timer:null};
+function s2bProg(){ const key=['O0','O1','O2','O3'][S2.level]; return S2B_PROG[key]; }
+function s2bStep(){
+  const p=s2bProg();
+  if(S2B.done||S2B.idx>=p.length) return;
+  const ins=p[S2B.idx];
+  const prev={R0:S2B.r0,R1:S2B.r1,R2:S2B.r2,R3:S2B.r3};
+  if(ins.type==='label'){ S2B.idx++; renderS2B(prev); return; }
+  let next=S2B.idx+1;
+  switch(ins.type){
+    case 'movs_r0_0': S2B.r0=0; break;
+    case 'movs_r0_10': S2B.r0=10; break;
+    case 'movs_r1_0': S2B.r1=0; break;
+    case 'ldrlit4': S2B.r4=FLAG_ADDR; break;
+    case 'ldr_idx': S2B.r2=GDATA[S2B.r1]??0; break;
+    case 'add_r0_r2': S2B.r0=(S2B.r0||0)+S2B.r2; break;
+    case 'add_r1_1': S2B.r1++; break;
+    case 'cmp_r1_4': S2B.lt=(S2B.r1<4); break;
+    case 'blt': next=S2B.lt?ins.t:ins.f; break;
+    case 'ldr_r1': S2B.r1=GDATA[0]; break;
+    case 'ldr_r2_4': S2B.r2=GDATA[1]; break;
+    case 'ldr_r3_8': S2B.r3=GDATA[2]; break;
+    case 'ldr_r2_12': S2B.r2=GDATA[3]; break;
+    case 'add_r1_r2': S2B.r1=(S2B.r1||0)+S2B.r2; break;
+    case 'add_r1_r3': S2B.r1=(S2B.r1||0)+S2B.r3; break;
+    case 'add_r0_r1r2': S2B.r0=(S2B.r1||0)+S2B.r2; break;
+    case 'mov_r3_r0': S2B.r3=S2B.r0; break;
+    case 'bl_sink': S2B.calls++; break;
+    case 'bx': S2B.done=true; break;
+  }
+  S2B.idx=next; renderS2B(prev);
+}
+function s2bReset(){ stopS2Bauto(); S2B.r0=null;S2B.r1=null;S2B.r2=null;S2B.r3=null;S2B.r4=null;S2B.lt=false;S2B.calls=0;S2B.idx=0;S2B.done=false; renderS2B(); }
+function stopS2Bauto(){ if(S2B.timer){clearInterval(S2B.timer);S2B.timer=null;} $('#s2bAuto').textContent='▶ 自动播放'; }
+function s2bAuto(){ if(S2B.timer){stopS2Bauto();return;} $('#s2bAuto').textContent='⏹ 停止'; let n=0;
+  S2B.timer=setInterval(()=>{ s2bStep(); n++; if(S2B.done||n>=40) stopS2Bauto(); }, 480); }
+function renderS2B(prev){
+  const p=s2bProg();
+  renderCodeWin($('#s2bAsm'), p, S2B.idx, []);
+  renderSrcWin($('#s2bSrc'), S2B_SRC, p[S2B.idx]?(p[S2B.idx].s):2);
+  renderRegGrid($('#s2bReg'), [
+    ['R0 sum', S2B.r0===null?'—':'0x'+hx(S2B.r0)],
+    ['R1 i', S2B.r1===null?'—':'0x'+hx(S2B.r1)],
+    ['R2', S2B.r2===null?'—':'0x'+hx(S2B.r2)],
+    ['R3', S2B.r3===null?'—':'0x'+hx(S2B.r3)],
+  ], prev);
+  $('#s2bMem').innerHTML =
+    '0x2000 0000  g_data[0] = '+GDATA[0]+'\n'+
+    '0x2000 0004  g_data[1] = '+GDATA[1]+'\n'+
+    '0x2000 0008  g_data[2] = '+GDATA[2]+'\n'+
+    '0x2000 000C  g_data[3] = '+GDATA[3]+'\n\n'+
+    'sink 调用次数 = '+S2B.calls;
+  const st=$('#s2bStatus');
+  if(S2.level===2){ st.className='status ok'; st.innerHTML='<span class="okc">O2 常量折叠！</span>编译器发现 <span class="mono">g_data</span> 是常量、循环范围确定，直接算出 <span class="mono">sum=10</span>——整个循环消失，只剩一条 <span class="mono">MOVS r0,#10</span>。'; }
+  else if(S2.level===3){ st.className='status'; st.innerHTML='<span class="hl">O3 循环展开</span>4 次迭代被「展开」成 4 条 LDR + 3 条 ADD 的直线代码，循环控制（i 比较/跳转）全部消失。单步看看和 O0 的区别。'; }
+  else if(S2B.done){ st.className='status ok'; st.innerHTML='<span class="okc">✓ 执行完成</span>最终 sum = <span class="mono">'+(S2B.r0===null?'?':S2B.r0)+'</span>，sink(sum) 被调用。'; }
+  else { st.className='status'; st.innerHTML='<span class="hl">O'+S2.level+'</span>老老实实的循环：<span class="mono">i</span> 从 0 数到 4，每次 <span class="mono">LDR</span> 读数组再 <span class="mono">ADD</span> 累加。单步看完整过程。'; }
+}
+$('#s2bStep').onclick=()=>{ stopS2Bauto(); s2bStep(); };
+$('#s2bAuto').onclick=s2bAuto;
+$('#s2bReset').onclick=s2bReset;
+
+/* 优化等级公共逻辑 */
+function s2setLevel(lv){
+  S2.level=lv;
+  $('#optSlider').value=lv;
+  $$('#optChips .opt-chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===lv));
+  $('#s2features').innerHTML=OLEVELS[lv].features;
+  s2aReset(); s2bReset();
+}
+$('#optSlider').oninput=()=>s2setLevel(+$('#optSlider').value);
+(function(){ const c=$('#optChips'); OLEVELS.forEach(L=>{ const b=document.createElement('button'); b.className='opt-chip'+(L.id===0?' on':''); b.dataset.v=L.id; b.textContent=L.name; b.onclick=()=>s2setLevel(L.id); c.appendChild(b); }); })();
+$('#s2exA').onclick=()=>{ S2.example=0; $('#s2exA').classList.add('on'); $('#s2exB').classList.remove('on'); $('#s2exAPanel').style.display=''; $('#s2exBPanel').style.display='none'; };
+$('#s2exB').onclick=()=>{ S2.example=1; $('#s2exB').classList.add('on'); $('#s2exA').classList.remove('on'); $('#s2exBPanel').style.display=''; $('#s2exAPanel').style.display='none'; };
+
+/* =====================================================================
+   维度 3：调试器观察变量
+   ===================================================================== */
+const S3_SRC=[
+  'volatile uint32_t g_tick;   // ISR 写它',
+  'int g_count;                // 非 volatile',
+  'void main_loop(void) {',
+  '  int idx = 0, sum = 0;',
+  '  for (;;) {',
+  '    if (g_tick) process(g_tick);',
+  '    g_count++;              // 主循环累加',
+  '    idx++; sum += idx;',
+  '  }',
+  '}',
+];
+const S3_ASM=[
+  {type:'label',lab:'main_loop:'},
+  {a:'08000100',c:'4805',asm:'LDR  r4, =g_tick',src:'main.c:6',s:5,type:'ldrlit4'},
+  {a:'08000102',c:'6825',asm:'LDR  r5, [r4]',src:'main.c:6',s:5,type:'ldrmem_r5'},
+  {a:'08000104',c:'2D00',asm:'CMP  r5, #0',src:'main.c:6',s:5,type:'cmp'},
+  {a:'08000106',c:'D002',asm:'BEQ  .L2',src:'main.c:6',s:5,type:'beq',t:7,f:5},
+  {a:'08000108',c:'4628',asm:'MOV  r0, r5',src:'main.c:6',s:5,type:'mov'},
+  {a:'0800010A',c:'F7FF..',asm:'BL   process',src:'main.c:6',s:5,type:'bl'},
+  {type:'label',lab:'.L2:'},
+  {a:'0800010C',c:'3601',asm:'ADD  r6, r6, #1',src:'main.c:7',s:6,type:'add_r6'},
+  {a:'0800010E',c:'3701',asm:'ADD  r7, r7, #1',src:'main.c:8',s:7,type:'add_r7'},
+  {a:'08000110',c:'4438',asm:'ADD  r8, r8, r7',src:'main.c:8',s:7,type:'add_r8'},
+  {a:'08000112',c:'E7F5',asm:'B    main_loop',src:'main.c:5',s:4,type:'jump'},
+];
+// 运行序列：{src 行, asm 行, 动作}
+const S3_SEQ=[
+  {s:4,d:11,act:null},
+  {s:5,d:1,act:null},
+  {s:5,d:2,act:()=>{ S3.tick++; }},
+  {s:6,d:8,act:()=>{ S3.r6++; if(S3.level===0) S3.countMem=S3.r6; }},
+  {s:7,d:9,act:()=>{ S3.idx++; }},
+  {s:7,d:10,act:()=>{ S3.sum+=S3.idx; }},
+];
+const S3={level:1,running:false,tick:0,r6:0,countMem:0,idx:0,sum:0,pc:0,timer:null};
+function s3setLevel(lv){ S3.level=lv; if(lv===0) S3.countMem=S3.r6; $$('#s3chips .opt-chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===lv)); renderS3(); }
+function s3step(){
+  const stp=S3_SEQ[S3.pc % S3_SEQ.length];
+  if(stp.act) stp.act();
+  S3.pc++;
+  renderS3(stp);
+}
+function s3run(){
+  if(S3.running){ S3.running=false; clearInterval(S3.timer); S3.timer=null; $('#s3Run').textContent='▶ 全速运行'; }
+  else { S3.running=true; $('#s3Run').textContent='⏸ 暂停'; S3.timer=setInterval(s3step, 600); }
+  renderS3();
+}
+function renderS3(cur){
+  const curStep = cur || (S3.pc>0 ? S3_SEQ[(S3.pc-1+S3_SEQ.length)%S3_SEQ.length] : {s:4,d:11});
+  renderSrcWin($('#s3src'), S3_SRC, curStep.s);
+  renderCodeWin($('#s3asm'), S3_ASM, curStep.d, [2]);
+  const opt0 = S3.level===0;
+  const tb=$('#watchBody'); tb.innerHTML='';
+  let row=document.createElement('tr');
+  row.innerHTML='<td style="color:#67e8f9">g_tick</td><td>volatile uint32_t</td><td style="color:#8b949e">0x2000 0000</td><td class="live">'+S3.tick+(S3.running?'<span class="watch-live"></span>':'')+'</td>';
+  tb.appendChild(row);
+  row=document.createElement('tr');
+  if(opt0){
+    row.innerHTML='<td style="color:#67e8f9">g_count</td><td>int（非 volatile）</td><td style="color:#8b949e">0x2000 0004</td><td style="color:#22c55e">'+S3.countMem+'</td>';
+  }else{
+    row.innerHTML='<td style="color:#67e8f9">g_count</td><td>int（非 volatile）</td><td style="color:#8b949e">0x2000 0004</td><td class="stale">'+S3.countMem+'</td>';
+  }
+  tb.appendChild(row);
+  [['idx','int'],['sum','int']].forEach(([n,t],k)=>{
+    const v=k===0?S3.idx:S3.sum;
+    row=document.createElement('tr');
+    if(opt0){ row.innerHTML='<td style="color:#67e8f9">'+n+'</td><td>'+t+'（局部）</td><td style="color:#8b949e">0x2000 4FF8</td><td style="color:#22c55e">'+v+'</td>'; }
+    else { row.innerHTML='<td style="color:#67e8f9">'+n+'</td><td>'+t+'（局部）</td><td style="color:#8b949e">(寄存器)</td><td class="gone">&lt;optimized away&gt;</td>'; }
+    tb.appendChild(row);
+  });
+  const stale = !opt0 && S3.countMem !== S3.r6;
+  $('#s3mem').innerHTML =
+    '0x2000 0000  g_tick  = 0x'+hx(S3.tick)+'  <span class="live">← volatile 实时</span>\n'+
+    '0x2000 0004  g_count = 0x'+hx(S3.countMem)+'  '+(stale?'<span class="stale">← 过期！真值在 R6</span>':(opt0?'<span class="live">← O0 同步</span>':'<span class="stale">← 过期值</span>'));
+  $('#s3reg').innerHTML = S3.running
+    ? '<span style="color:#6e7681">全速运行时寄存器值不稳定，调试器读不到</span>'
+    : 'R6（g_count 真值）= 0x'+hx(S3.r6)+'\nR7（idx）= 0x'+hx(S3.idx)+'\nR8（sum）= 0x'+hx(S3.sum)+'\n'+(stale?'<span class="stale">注意：内存里的 g_count 已是旧值</span>':'<span class="live">内存与寄存器一致</span>');
+  const st=$('#s3status');
+  if(S3.running){
+    if(opt0){ st.className='status'; st.innerHTML='<span class="hl">全速 · -O0</span>所有变量都在内存里，Watch 窗口全在实时刷新——这是<b>调试一致性</b>，不是 volatile 的功劳。'; }
+    else { st.className='status warn'; st.innerHTML='<span class="bad">全速 · -O'+S3.level+'</span>volatile 的 <span class="mono">g_tick</span> 实时更新（绿）；非 volatile 的 <span class="mono">g_count</span> 显示<span class="bad">过期内存值</span>，局部变量 <span class="mono">idx/sum</span> 直接 <span class="bad">optimized away</span>。'; }
+  }else{
+    if(opt0){ st.className='status'; st.innerHTML='<span class="hl">已暂停 · -O0</span>一切正常。O0 让变量留在内存里，纯粹为了调试方便。'; }
+    else { st.className='status'; st.innerHTML='<span class="hl">已暂停 · -O'+S3.level+'</span>暂停后调试器能读寄存器（右侧快照），但 <span class="mono">g_count</span> 的内存值早已过期。只有 <span class="mono volatile">volatile</span> 的 <span class="mono">g_tick</span> 在内存里永远正确。'; }
+  }
+}
+$('#s3Run').onclick=s3run;
+$('#s3StepTick').onclick=s3step;
+(function(){ const c=$('#s3chips'); ['O0','O1','O2','O3'].forEach((n,i)=>{ const b=document.createElement('button'); b.className='opt-chip'+(i===1?' on':''); b.dataset.v=i; b.textContent=n; b.onclick=()=>s3setLevel(i); c.appendChild(b); }); })();
+
+/* =====================================================================
+   维度 4：中断共享变量（四窗联动模拟器）
+   ===================================================================== */
+const S4_PROG={
+  nonvol:[
+    {a:'08000100',c:'4801',asm:'LDR  r0, =flag',src:'main.c:7',s:6,type:'ldr-lit'},
+    {a:'08000102',c:'7801',asm:'LDRB r1, [r0]',src:'main.c:7',s:6,type:'ldrb'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000104',c:'2900',asm:'CMP  r1, #0',src:'main.c:7',s:6,type:'cmp'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',src:'main.c:7',s:6,type:'beq',t:2,f:5},
+    {a:'08000108',c:'F7FF..',asm:'BL   do_something',src:'main.c:8',s:7,type:'bl_do'},
+    {a:'0800010C',c:'2200',asm:'MOVS r2, #0',src:'main.c:9',s:8,type:'movs_r2'},
+    {a:'0800010E',c:'7002',asm:'STRB r2, [r0]',src:'main.c:9',s:8,type:'strb'},
+    {a:'08000110',c:'E7F8',asm:'B    .loop',src:'main.c:6',s:5,type:'jump',t:2},
+  ],
+  vol:[
+    {a:'08000100',c:'4801',asm:'LDR  r0, =flag',src:'main.c:7',s:6,type:'ldr-lit'},
+    {type:'label',lab:'.loop:'},
+    {a:'08000102',c:'7801',asm:'LDRB r1, [r0]',src:'main.c:7',s:6,type:'ldrb'},
+    {a:'08000104',c:'2900',asm:'CMP  r1, #0',src:'main.c:7',s:6,type:'cmp'},
+    {a:'08000106',c:'D0FC',asm:'BEQ  .loop',src:'main.c:7',s:6,type:'beq',t:1,f:5},
+    {a:'08000108',c:'F7FF..',asm:'BL   do_something',src:'main.c:8',s:7,type:'bl_do'},
+    {a:'0800010C',c:'2200',asm:'MOVS r2, #0',src:'main.c:9',s:8,type:'movs_r2'},
+    {a:'0800010E',c:'7002',asm:'STRB r2, [r0]',src:'main.c:9',s:8,type:'strb'},
+    {a:'08000110',c:'E7F8',asm:'B    .loop',src:'main.c:6',s:5,type:'jump',t:1},
+  ],
+};
+const S4_ISR=[
+  {type:'label',lab:'ISR_Handler:'},
+  {a:'08000118',c:'B508',asm:'PUSH {lr}',src:'ISR'},
+  {a:'0800011A',c:'4801',asm:'LDR  r0, =flag',src:'ISR'},
+  {a:'0800011C',c:'2101',asm:'MOVS r1, #1',src:'ISR'},
+  {a:'0800011E',c:'7001',asm:'STRB r1, [r0]',src:'flag=1'},
+  {a:'08000120',c:'BD00',asm:'POP  {pc}',src:'返回'},
+];
+const S4={vol:false,r0:null,r1:null,r2:null,z:true,flag:0,idx:0,doCount:0,timer:null};
+function s4prog(){ return S4.vol?S4_PROG.vol:S4_PROG.nonvol; }
+function s4srcLines(){
+  return [
+    'int'+ (S4.vol?' volatile':'') + ' flag = 0;',
+    'void ISR_Handler(void) {',
+    '  flag = 1;',
+    '}',
+    'int main(void) {',
+    '  while (1) {',
+    '    if (flag) {',
+    '      do_something();',
+    '      flag = 0;',
+    '    }',
+    '  }',
+    '}',
+  ];
+}
+function s4step(){
+  const p=s4prog();
+  if(S4.idx>=p.length) return;
+  const ins=p[S4.idx];
+  const prev={R0:S4.r0,R1:S4.r1,R2:S4.r2};
+  if(ins.type==='label'){ S4.idx++; renderS4(prev); return; }
+  let next=S4.idx+1;
+  switch(ins.type){
+    case 'ldr-lit': S4.r0=FLAG_ADDR; break;
+    case 'ldrb': S4.r1=S4.flag; break;
+    case 'cmp': S4.z=(S4.r1===0); break;
+    case 'beq': next=S4.z?ins.t:ins.f; break;
+    case 'bl_do': S4.doCount++; break;
+    case 'movs_r2': S4.r2=0; break;
+    case 'strb': S4.flag=S4.r2; break;
+    case 'jump': next=ins.t; break;
+  }
+  S4.idx=next; renderS4(prev);
+}
+function s4setVol(v){
+  stopS4auto();
+  S4.vol=v; S4.r0=null;S4.r1=null;S4.r2=null;S4.z=true;S4.flag=0;S4.idx=0;S4.doCount=0;
+  $('#s4VolOn').classList.toggle('on',v); $('#s4VolOff').classList.toggle('on',!v);
+  renderS4();
+}
+function s4irq(){
+  stopS4auto();
+  const p=$('#s4isrAsm'); p.classList.remove('pulse'); void p.offsetWidth; p.classList.add('pulse');
+  setTimeout(()=>p.classList.remove('pulse'), 900);
+  S4.flag=1; renderS4();
+}
+function stopS4auto(){ if(S4.timer){clearInterval(S4.timer);S4.timer=null;} $('#s4Auto').textContent='▶ 自动播放'; }
+function s4auto(){
+  if(S4.timer){ stopS4auto(); return; }
+  $('#s4Auto').textContent='⏹ 停止'; let n=0;
+  S4.timer=setInterval(()=>{
+    s4step(); n++;
+    const stuck = !S4.vol && S4.flag===1 && S4.r1===0 && S4.idx>=2;
+    const progressed = S4.vol && S4.doCount>0;
+    if(stuck || progressed || n>=40) stopS4auto();
+  }, parseInt($('#s4Speed').value));
+}
+function renderS4(prev){
+  const p=s4prog();
+  renderCodeWin($('#s4asm'), p, S4.idx, S4.vol?[2]:[1]);
+  renderCodeWin($('#s4isrAsm'), S4_ISR, -1, [4]);
+  renderSrcWin($('#s4src'), s4srcLines(), p[S4.idx]?(p[S4.idx].s):6);
+  renderRegGrid($('#s4reg'), [
+    ['R0', S4.r0===null?'—':'0x'+hx(S4.r0)],
+    ['R1', S4.r1===null?'—':'0x'+hx(S4.r1)],
+    ['R2', S4.r2===null?'—':'0x'+hx(S4.r2)],
+  ], prev);
+  $('#s4doCount').textContent=S4.doCount;
+  const stale = !S4.vol && S4.flag===1 && S4.r1===0;
+  $('#s4mem').innerHTML =
+    '0x2000 0000  flag = 0x'+hx(S4.flag)+'   ← 内存里的 flag\n'+
+    (S4.flag===1?'<span class="live">  ISR 已写入 1</span>':'<span class="stale">  初始 0</span>')+
+    (stale?'\n<span class="warn">  ⚠ 主循环 R1 仍缓存 0！</span>':'');
+  const st=$('#s4status');
+  if(S4.vol && S4.doCount>0){
+    st.className='status ok';
+    st.innerHTML='<span class="okc">✓ 起死回生！</span>每轮 <span class="mono">LDRB</span> 重新读内存，读到 flag=1 后执行 do_something（第 '+S4.doCount+' 次），再清 flag=0 继续等。';
+  }
+  else if(stale){
+    st.className='status warn';
+    st.innerHTML='<span class="bad">✗ 程序卡死！</span>ISR 把内存 flag 写成 1，但主循环 R1 还是 0，<span class="mono">BEQ</span> 永远跳回——do_something 永远执行不了。';
+  }
+  else if(!S4.vol && S4.flag===0){
+    st.className='status';
+    st.innerHTML='<span class="hl">非 volatile 模式</span><span class="mono">LDRB</span> 只在循环前执行一次。先「触发中断」把 flag 写 1，再「单步」看 R1 会不会更新。';
+  }
+  else if(!S4.vol){
+    st.className='status';
+    st.innerHTML='<span class="hl">非 volatile</span>内存 flag=1，但 R1 仍缓存旧值。继续单步，看 <span class="mono">BEQ</span> 一直跳回循环。';
+  }
+  else {
+    st.className='status';
+    st.innerHTML='<span class="hl">volatile 模式</span>每轮 <span class="mono">LDRB</span> 重新读内存。「触发中断」后下一轮就能读到 flag=1。';
+  }
+}
+$('#s4Step').onclick=()=>{ stopS4auto(); s4step(); };
+$('#s4Auto').onclick=s4auto;
+$('#s4Irq').onclick=s4irq;
+$('#s4Reset').onclick=()=>{ stopS4auto(); S4.r0=null;S4.r1=null;S4.r2=null;S4.z=true;S4.flag=0;S4.idx=0;S4.doCount=0; renderS4(); };
+$('#s4VolOn').onclick=()=>s4setVol(true);
+$('#s4VolOff').onclick=()=>s4setVol(false);
+
+/* =====================================================================
+   初始化
+   ===================================================================== */
+renderS1();
+renderClear();
+s2setLevel(0);
+renderS3();
+renderS4();
+</script>
+</body>
+</html>

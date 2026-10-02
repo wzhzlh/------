@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STM32F103C8T6 · 代码运行过程（CPU 模拟器）</title>
+<style>
+/* ================= 主题变量 ================= */
+:root{
+  --bg:#0d1117; --bg2:#161b22; --panel:#1c2128; --panel2:#21262d;
+  --border:#30363d; --border2:#3d444d;
+  --text:#e6edf3; --dim:#8b949e; --faint:#6e7681;
+  --cyan:#22d3ee; --amber:#f59e0b; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --purple:#a78bfa; --pink:#f472b6;
+  --mono:"Consolas","SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC","Segoe UI",sans-serif;
+  background:radial-gradient(1200px 500px at 15% -5%, #14202b 0%, transparent 55%),
+             radial-gradient(1000px 500px at 100% 0%, #1a1626 0%, transparent 50%), var(--bg);
+  color:var(--text); line-height:1.7; min-height:100vh; overflow-x:hidden;
+}
+.mono{font-family:var(--mono)}
+a{color:var(--cyan);text-decoration:none}
+
+/* ================= 顶部标题 ================= */
+header{padding:60px 22px 34px;text-align:center}
+header .badge{
+  display:inline-block;font-size:12.5px;letter-spacing:2px;color:var(--cyan);
+  border:1px solid var(--border2);border-radius:999px;padding:6px 16px;margin-bottom:18px;
+  background:rgba(34,211,238,.06);
+}
+header h1{
+  font-size:clamp(26px,4.6vw,46px);font-weight:800;letter-spacing:1px;
+  background:linear-gradient(90deg,#67e8f9,#a5b4fc,#f9a8d4);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.param-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.param{
+  font-size:12.5px;padding:5px 13px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--dim);font-family:var(--mono);
+}
+.param b{color:var(--cyan);font-weight:600}
+header .tip{color:var(--faint);font-size:12.5px;margin-top:14px}
+
+/* ================= 导航 ================= */
+nav{
+  position:sticky;top:0;z-index:100;background:rgba(13,17,23,.85);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:2px;justify-content:center;padding:8px 14px;
+}
+nav a{color:var(--dim);font-size:12.5px;padding:6px 11px;border-radius:7px;transition:.15s;white-space:nowrap}
+nav a:hover{color:var(--text);background:var(--panel2)}
+nav a.on{color:var(--cyan);background:rgba(34,211,238,.1)}
+
+/* ================= 布局 ================= */
+main{max-width:1100px;margin:0 auto;padding:20px 18px 120px}
+section{
+  margin:48px 0;padding:30px 28px;
+  background:linear-gradient(180deg,var(--panel),var(--bg2));
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+}
+.sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.sec-num{font-size:13px;font-weight:700;color:#04121f;background:var(--cyan);border-radius:8px;padding:3px 10px;letter-spacing:1px}
+section h2{font-size:23px;font-weight:700}
+.sec-desc{color:var(--dim);margin:4px 0 20px;font-size:14.5px}
+h3{font-size:17px;font-weight:700;margin:24px 0 10px;color:#dbe6f5}
+h3 .tag{font-size:12px;color:var(--faint);font-weight:400;margin-left:8px}
+p.note{color:var(--dim);font-size:14px;margin:8px 0}
+
+/* 💡 按钮 + 提示 */
+.tip-btn{
+  margin-left:auto;font-family:inherit;font-size:13px;background:var(--panel2);
+  color:var(--dim);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;cursor:pointer;transition:.15s;
+}
+.tip-btn:hover{color:var(--amber);border-color:var(--amber)}
+.takeaway{
+  display:none;margin:12px 0;padding:12px 16px;border-left:3px solid var(--amber);
+  background:var(--bg2);border-radius:0 10px 10px 0;font-size:14.5px;color:var(--text);
+}
+.takeaway.show{display:block}
+.takeaway b{color:var(--amber)}
+
+/* ================= 通用组件 ================= */
+.stage{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;overflow:hidden}
+.stage.scroll{overflow-x:auto}
+svg{display:block;width:100%;height:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.btn{
+  font-family:inherit;font-size:13.5px;font-weight:600;background:var(--panel2);color:var(--text);
+  border:1px solid var(--border2);border-radius:9px;padding:8px 16px;cursor:pointer;transition:.15s;margin:4px 6px 4px 0;
+}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);border-color:var(--cyan);color:#04121f}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.warn{background:var(--red);border-color:var(--red);color:#fff}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.sm{padding:5px 11px;font-size:12.5px}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:12px 0}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0}
+.legend span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim)}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+th,td{border:1px solid var(--border2);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:#cfe0f5;font-weight:600}
+td{color:var(--dim)}
+td b{color:var(--text)}
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:6px;margin:2px 3px 2px 0;white-space:nowrap;font-family:var(--mono)}
+
+pre{
+  background:#0b0f16;border:1px solid var(--border);border-radius:11px;padding:14px 16px;
+  overflow-x:auto;font-size:13px;line-height:1.6;margin:12px 0;
+}
+pre code{font-family:var(--mono);color:#c7d6ee}
+.kw{color:#7dd3fc}.num{color:#fbbf24}.com{color:#6e7681}.str{color:#a5d6a7}.fn{color:#f472b6}.type{color:#a5b4fc}
+
+/* 信息面板 */
+.info-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;min-height:80px}
+.info-panel .big{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--cyan)}
+.info-panel .sub{color:var(--dim);font-size:13.5px;margin-top:4px}
+
+/* 流动箭头 / 悬停 */
+.flow{stroke-dasharray:8 8;animation:flowdash 1s linear infinite}
+@keyframes flowdash{to{stroke-dashoffset:-16}}
+.hot{cursor:pointer}
+
+/* 闪烁高亮 */
+.flash-new{animation:flashg .7s ease}
+.flash-mod{animation:flashy .7s ease}
+@keyframes flashg{0%{background:rgba(34,197,94,.45)}100%{background:transparent}}
+@keyframes flashy{0%{background:rgba(245,158,11,.5)}100%{background:transparent}}
+
+footer{text-align:center;color:var(--faint);font-size:12.5px;padding:30px}
+body{font-size:16px} header p,.sec-desc,p.note{color:#c4ceda;font-size:16px} section h2{font-size:26px} h3{font-size:20px}
+table{font-size:15.5px} th{color:#f0f6fc} td{color:#d0d9e3} .btn{font-size:15px} .narr{font-size:16px;color:#e6edf3}
+
+/* ================= 章节7 模拟器 ================= */
+.code-line{font-family:var(--mono);display:grid;grid-template-columns:86px 96px 150px 1fr;gap:6px;padding:2px 8px;font-size:12.5px;border-radius:4px;align-items:center}
+.code-line.cur{background:rgba(34,211,238,.12);outline:1px solid var(--cyan)}
+.code-line.cur .pc-arrow{color:var(--cyan)}
+.code-line .src{color:var(--faint);text-align:right}
+.reg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-family:var(--mono);font-size:12.5px}
+.reg-cell{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:5px 9px;display:flex;justify-content:space-between;transition:background .2s}
+.reg-cell .rn{color:var(--dim)} .reg-cell .rv{color:var(--text)}
+.reg-cell.flash{animation:flashg .7s ease}
+.hal-line{font-family:var(--mono);font-size:12.5px;padding:4px 8px;border-radius:4px;color:#c7d6ee;white-space:pre-wrap}
+.hal-line.cur{background:rgba(34,211,238,.14);outline:1px solid var(--cyan);animation:halpulse .8s ease-in-out infinite}
+@keyframes halpulse{0%,100%{box-shadow:0 0 0 rgba(34,211,238,0)}50%{box-shadow:0 0 12px rgba(34,211,238,.5)}}
+.memdump{font-family:var(--mono);font-size:11.5px;line-height:1.5;white-space:pre;overflow-x:auto}
+.led{width:18px;height:18px;border-radius:50%;display:inline-block;vertical-align:middle;margin:0 6px;border:2px solid #555;transition:.2s}
+.led.on{background:var(--green);box-shadow:0 0 12px var(--green);border-color:var(--green)}
+.led.off{background:#333}
+.stack-line{padding:2px 6px;border-radius:4px;transition:background .2s}
+.stack-line.push{animation:stackpush .8s ease-out}
+.stack-line.pop{animation:stackpop .8s ease-out}
+@keyframes stackpush{0%{background:rgba(239,68,68,.65);transform:translateX(12px)}100%{background:transparent;transform:none}}
+@keyframes stackpop{0%{background:rgba(34,197,94,.65);transform:translateX(-12px)}100%{background:transparent;transform:none}}
+
+/* 流水线格子 */
+.pipe{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 0}
+.pipe .slot{background:var(--panel2);border:1px solid var(--border2);border-radius:9px;padding:8px 10px;text-align:center;font-size:12px}
+.pipe .slot .phead{color:var(--faint);font-size:11px}
+.pipe .slot .pbody{font-family:var(--mono);font-size:12px;color:var(--cyan);min-height:18px;margin-top:3px}
+
+/* ================= 章节8 调试 ================= */
+.debug-panel{background:#0b0f16;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:var(--mono);font-size:12.5px}
+.debug-panel .ptitle{color:var(--faint);font-size:11px;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">STM32 · CPU 模拟器</div>
+  <h1>代码运行过程（CPU 模拟器）</h1>
+  <div class="param-bar">
+    <span class="param">内核 <b>Cortex-M3</b></span>
+    <span class="param">主频 <b>72MHz</b></span>
+    <span class="param">PC <b>0x0800 0100</b></span>
+    <span class="param">栈顶 <b>0x2000 5000</b></span>
+    <span class="param">中断 <b>SysTick</b></span>
+  </div>
+  <p class="tip">单步 / 全速自动播放 · 点「触发中断」看现场压栈与恢复</p>
+</header>
+
+<nav id="nav">
+  <a href="#run" class="on">① 运行模拟</a>
+</nav>
+
+<main>
+
+<!-- ================= 代码运行过程（CPU 模拟器） ================= -->
+<section id="run">
+  <div class="sec-head">
+    <span class="sec-num">01</span><h2>代码运行过程（CPU 模拟器）</h2>
+    <button class="tip-btn" data-tip="run">💡</button>
+  </div>
+  <div class="takeaway" id="tip-run"><b>PC 指向哪，CPU 就执行哪。</b>中断一来：硬件自动压栈 R0~R3/R12/LR/PC/xPSR → 从向量表取 ISR 地址 → 干完活 → 出栈原路返回。</div>
+  <p class="sec-desc">一个微型 CPU 模拟器：单步执行，寄存器/内存/流水线/LED 全部联动变化。点「触发中断」看现场压栈与恢复。</p>
+
+  <div class="controls">
+    <button class="btn" id="simReset">⏮ 复位</button>
+    <button class="btn primary" id="simStep">⏭ 单步</button>
+    <button class="btn" id="simAuto">▶ 自动播放</button>
+    <button class="btn" id="simPause">⏸ 暂停</button>
+    <button class="btn warn" id="simIrq">⚡ 触发 SysTick 中断</button>
+    <span style="margin-left:8px;color:var(--dim);font-size:12.5px">速度</span>
+    <input type="range" id="simSpeed" min="200" max="1500" value="800" step="100" style="width:120px">
+  </div>
+
+  <div class="grid2">
+    <!-- A 代码窗口 -->
+    <div class="debug-panel">
+      <div class="ptitle">A · 反汇编 / 代码窗口</div>
+      <div class="code-line" style="grid-template-columns:86px 96px 150px 1fr;color:var(--faint)">
+        <span>地址</span><span>机器码</span><span>汇编</span><span style="text-align:right">源码</span>
+      </div>
+      <div id="codeWin"></div>
+      <div id="pipeWin" class="pipe" style="margin-top:10px">
+        <div class="slot"><div class="phead">取指 Fetch</div><div class="pbody" id="pF">—</div></div>
+        <div class="slot"><div class="phead">译码 Decode</div><div class="pbody" id="pD">—</div></div>
+        <div class="slot"><div class="phead">执行 Execute</div><div class="pbody" id="pE">—</div></div>
+      </div>
+    </div>
+
+    <!-- B 寄存器窗口 -->
+    <div class="debug-panel">
+      <div class="ptitle">B · 寄存器窗口（值变化会闪绿/黄）</div>
+      <div class="reg-grid" id="regWin"></div>
+    </div>
+  </div>
+
+  <div class="grid3" style="margin-top:14px">
+    <!-- HAL 代码窗口 -->
+    <div class="debug-panel">
+      <div class="ptitle">D · HAL 示例代码（与断点同步）</div>
+      <div id="halWin"></div>
+      <div style="margin-top:10px">虚拟 LED（PC13）<span class="led off" id="simLed"></span>
+        <span class="mono" style="color:var(--dim)">ODR bit13 = <span id="odrBit">1</span>（0=亮）</span></div>
+    </div>
+    <!-- C 内存窗口 -->
+    <div class="debug-panel">
+      <div class="ptitle">C · 内存窗口（SRAM 0x2000 0000 起）</div>
+      <div class="memdump" id="memSram"></div>
+      <div class="ptitle" style="margin-top:10px">外设寄存器区（0x4001 1000 起，GPIOC）</div>
+      <div class="memdump" id="memPeriph"></div>
+    </div>
+
+    <!-- 栈窗口 -->
+    <div class="debug-panel">
+      <div class="ptitle">栈窗口（中断压栈现场，SP 减小时可见）</div>
+      <div class="memdump" id="memStack"></div>
+    </div>
+  </div>
+  <div class="debug-panel" style="margin-top:14px">
+    <div class="ptitle">执行提示</div>
+    <div class="note" style="font-family:inherit;color:var(--dim);font-size:13px">
+      <b style="color:var(--text)">为什么中断要「快进快出」？</b>中断里 CPU 干不了别的事，越慢其他任务越饿。<br>
+      <b style="color:var(--text)">为什么不能 HAL_Delay()？</b>它是死等循环，会卡死中断、卡死主循环。<br>
+      <b style="color:var(--text)">共享变量为什么加 volatile？</b>防止编译器把变量优化进寄存器，保证每次都真去内存读中断刚写的值。
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>STM32F103C8T6 · 代码运行过程（CPU 模拟器）· 单文件 · 无外部依赖 · 双击即可打开</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   通用工具
+   ===================================================================== */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function hx(n, w=8){ return n.toString(16).toUpperCase().padStart(w,'0'); }
+function hx4(n){ // 地址四位分组 0x0800 0000
+  const s = n.toString(16).toUpperCase().padStart(8,'0');
+  return '0x' + s.slice(0,4) + ' ' + s.slice(4);
+}
+function svg(tag, attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const k in attrs)e.setAttribute(k,attrs[k]); return e; }
+function txt(x,y,str,cls,extra){ const t=svg('text',Object.assign({x,y},extra)); t.setAttribute('class',cls||''); t.textContent=str; return t; }
+
+/* 滚动进入视口（不必须，但加一点淡入） */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='none';io.unobserve(e.target);}}),{threshold:0.05});
+$$('section').forEach(s=>{s.style.opacity='0';s.style.transform='translateY(24px)';s.style.transition='opacity .6s,transform .6s';io.observe(s);});
+
+/* 导航高亮 */
+const navIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){$$('#nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id));}}),{rootMargin:'-45% 0px -50% 0px'});
+$$('section').forEach(s=>navIO.observe(s));
+
+/* 💡 按钮 */
+$$('.tip-btn').forEach(b=>b.onclick=()=>{document.getElementById('tip-'+b.dataset.tip).classList.toggle('show');});
+
+
+/* =====================================================================
+   CPU 模拟器
+   ===================================================================== */
+const TICK_ADDR=0x20000004, ODR_ADDR=0x4001100C, ISR_ADDR=0x08000118, SP_TOP=0x20005000;
+const SIM={r0:0,r1:0,r2:0,r3:0,r12:0,sp:SP_TOP,lr:0,pc:0x08000100,xpsr:0x01000000,Z:false,
+  gTick:0, odr:0x2000, isr:false, progIdx:0, isrIdx:0, savedProgIdx:0, stack:{}, running:false, timer:null};
+
+function progExec(S, a){ // a = 指令地址
+  switch(a){
+    case 0x08000100: S.r0=TICK_ADDR; break;                    // LDR r0,=g_tick_1ms
+    case 0x08000102: S.r1=ODR_ADDR; break;                     // LDR r1,=0x4001100C
+    case 0x08000104: S.r2=S.gTick; break;                      // loop: LDRB r2,[r0]
+    case 0x08000106: S.Z=(S.r2===0); break;                    // CMP r2,#0
+    case 0x08000108: if(S.Z) S.progIdx=2; break;               // BEQ loop
+    case 0x0800010A: S.r2=0; break;                            // MOV r2,#0
+    case 0x0800010C: S.gTick=0; break;                         // STRB r2,[r0]
+    case 0x0800010E: S.r3=S.odr; break;                        // LDR r3,[r1]
+    case 0x08000110: S.r3 = S.r3 ^ 0x2000; break;             // HAL_GPIO_TogglePin：翻转 PC13
+    case 0x08000114: S.odr=S.r3; break;                        // STR r3,[r1]
+    case 0x08000116: S.progIdx=2; break;                       // B loop
+  }
+}
+function isrExec(S, a){
+  switch(a){
+    case 0x08000118: S.r0=TICK_ADDR; break;
+    case 0x0800011A: S.r1=1; break;
+    case 0x0800011C: S.gTick=1; break;                         // g_tick_1ms = 1
+    case 0x0800011E: S.bxReturn=true; break;                   // BX LR
+  }
+}
+const PROG=[
+  {a:0x08000100,c:'4801',asm:'LDR r0, =g_tick_1ms',src:'main.c:10'},
+  {a:0x08000102,c:'4906',asm:'LDR r1, =0x4001100C',src:'main.c:11'},
+  {a:0x08000104,c:'7802',asm:'LDRB r2, [r0]',src:'main.c:13'},   // loop
+  {a:0x08000106,c:'2A00',asm:'CMP r2, #0',src:'main.c:13'},
+  {a:0x08000108,c:'D0FC',asm:'BEQ loop',src:'main.c:13'},
+  {a:0x0800010A,c:'2200',asm:'MOV r2, #0',src:'main.c:14'},
+  {a:0x0800010C,c:'7002',asm:'STRB r2, [r0]',src:'main.c:14'},
+  {a:0x0800010E,c:'6803',asm:'LDR r3, [r1]',src:'main.c:15'},
+  {a:0x08000110,c:'F0830300',asm:'EOR r3, r3, #0x2000',src:'main.c:15'},
+  {a:0x08000114,c:'600B',asm:'STR r3, [r1]',src:'main.c:15'},
+  {a:0x08000116,c:'E7F5',asm:'B loop',src:'main.c:16'},
+];
+const ISR=[
+  {a:0x08000118,c:'4801',asm:'LDR r0, =g_tick_1ms',src:'SysTick'},
+  {a:0x0800011A,c:'2101',asm:'MOV r1, #1',src:'SysTick'},
+  {a:0x0800011C,c:'7001',asm:'STRB r1, [r0]',src:'g_tick=1'},
+  {a:0x0800011E,c:'4770',asm:'BX LR',src:'返回'},
+];
+const HAL_MAIN=[
+  'volatile uint8_t g_tick_1ms = 0;',
+  'void App_Loop(void) {',
+  '  if (g_tick_1ms) {',
+  '    g_tick_1ms = 0;',
+  '    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);',
+  '  }',
+  '}'
+];
+const HAL_ISR=[
+  'void SysTick_Handler(void) {',
+  '  g_tick_1ms = 1;  // volatile: 写回 SRAM',
+  '}'
+];
+function currentProg(){ return SIM.isr?ISR:PROG; }
+function currentIdx(){ return SIM.isr?SIM.isrIdx:SIM.progIdx; }
+
+function simStep(){
+  const changed={r0:SIM.r0,r1:SIM.r1,r2:SIM.r2,r3:SIM.r3,sp:SIM.sp,lr:SIM.lr,pc:SIM.pc,gTick:SIM.gTick,odr:SIM.odr};
+  SIM.bxReturn=false;
+  if(SIM.isr){
+    const ins=ISR[SIM.isrIdx];
+    isrExec(SIM, ins.a);
+    if(SIM.bxReturn){ // 出栈恢复
+      const order=['r0','r1','r2','r3','r12','lr','pc','xpsr'];
+      let s=SIM.sp;
+      order.forEach(k=>{ SIM[k]=SIM.stack[s]!==undefined?SIM.stack[s]:0; s+=4; });
+      SIM.sp=s; SIM.isr=false; SIM.progIdx=SIM.savedProgIdx; SIM.pc=PROG[SIM.progIdx].a;
+    } else { SIM.isrIdx++; SIM.pc=ISR[SIM.isrIdx]?ISR[SIM.isrIdx].a:SIM.pc; }
+  } else {
+    const ins=PROG[SIM.progIdx];
+    progExec(SIM, ins.a);
+    // 分支不改变 progIdx 的情况 → 顺序 +1
+    const branchAddrs=[0x08000108,0x08000116]; // BEQ(条件不满足时) 与 B 都在 exec 里已处理；这里只在未跳转时 +1
+    // BEQ 若未跳转需要 +1；B 一定跳转；其它顺序 +1
+    if(ins.a===0x08000108){ if(!SIM.Z) SIM.progIdx++; }
+    else if(ins.a===0x08000116){ /* B 已在 exec 设好 */ }
+    else { SIM.progIdx++; }
+    SIM.pc = SIM.progIdx<PROG.length ? PROG[SIM.progIdx].a : SIM.pc;
+  }
+  renderSim(changed);
+}
+function simIrq(){
+  if(SIM.isr) return;
+  const changed={r0:SIM.r0,r1:SIM.r1,r2:SIM.r2,r3:SIM.r3,sp:SIM.sp,lr:SIM.lr,pc:SIM.pc,gTick:SIM.gTick,odr:SIM.odr};
+  SIM.isr=true;
+  SIM.savedProgIdx=SIM.progIdx;
+  const push=[['xpsr',SIM.xpsr],['pc',SIM.pc],['lr',SIM.lr],['r12',SIM.r12],['r3',SIM.r3],['r2',SIM.r2],['r1',SIM.r1],['r0',SIM.r0]];
+  let s=SIM.sp;
+  push.forEach(([k,v])=>{ s-=4; SIM.stack[s]=v; });
+  SIM.sp=s;
+  SIM.lr=0xFFFFFFF9; // EXC_RETURN
+  SIM.pc=ISR_ADDR; SIM.isrIdx=0;
+  renderSim(changed);
+}
+function simReset(){
+  stopSim();
+  SIM.r0=SIM.r1=SIM.r2=SIM.r3=SIM.r12=0; SIM.sp=SP_TOP; SIM.lr=0; SIM.pc=0x08000100; SIM.xpsr=0x01000000; SIM.Z=false;
+  SIM.gTick=0; SIM.odr=0x2000; SIM.isr=false; SIM.progIdx=0; SIM.isrIdx=0; SIM.stack={};
+  renderSim(null,true);
+}
+
+function renderSim(changed, full){
+  // 寄存器
+  const regs=[['R0',SIM.r0],['R1',SIM.r1],['R2',SIM.r2],['R3',SIM.r3],['R12',SIM.r12],['SP',SIM.sp],['LR',SIM.lr],['PC',SIM.pc],['xPSR',SIM.xpsr]];
+  const rw=$('#regWin'); rw.innerHTML='';
+  regs.forEach(([n,v])=>{
+    const cell=document.createElement('div'); cell.className='reg-cell';
+    if(changed && full===undefined){ const key=n.toLowerCase(); if(changed[key]!==undefined && changed[key]!==v) cell.classList.add('flash'); }
+    if(n==='SP' && changed && changed.sp!==v) cell.classList.add('flash');
+    if(n==='PC' && changed && changed.pc!==v) cell.classList.add('flash');
+    cell.innerHTML=`<span class="rn">${n}</span><span class="rv">0x${hx(v>>>0)}</span>`;
+    rw.appendChild(cell);
+  });
+  // 代码窗口
+  const cw=$('#codeWin'); cw.innerHTML='';
+  const cp=currentProg(), ci=currentIdx();
+  cp.forEach((ins,i)=>{
+    const line=document.createElement('div'); line.className='code-line';
+    if(i===ci && (full!==true||SIM.pc===ins.a)) line.classList.add('cur');
+    if(i===ci) line.classList.add('cur');
+    line.innerHTML=`<span>${i===ci?'▶ ':''}0x${hx(ins.a)}</span><span>${ins.c}</span><span>${ins.asm}</span><span class="src">${ins.src}</span>`;
+    cw.appendChild(line);
+  });
+  const hw=$('#halWin'); hw.innerHTML='';
+  const hlines=SIM.isr?HAL_ISR:HAL_MAIN;
+  const mainHalByAddr={0x08000100:0,0x08000102:0,0x08000104:2,0x08000106:2,0x08000108:2,0x0800010A:3,0x0800010C:3,0x0800010E:4,0x08000110:4,0x08000114:4,0x08000116:2};
+  // HAL 窗口跟随 PC 当前指向的指令，而不是跟随数组索引猜测，避免分支后错位。
+  const hi=SIM.isr?Math.min(SIM.isrIdx,hlines.length-1):(mainHalByAddr[SIM.pc]??0);
+  hlines.forEach((src,i)=>{ const line=document.createElement('div'); line.className='hal-line'+(i===hi?' cur':''); line.textContent=(i+1).toString().padStart(2,' ')+'  '+src; hw.appendChild(line); });
+  // 流水线
+  const pF=cp[ci+2], pD=cp[ci+1], pE=cp[ci];
+  $('#pF').textContent=pF?pF.asm:'—';
+  $('#pD').textContent=pD?pD.asm:'—';
+  $('#pE').textContent=pE?pE.asm:'—';
+  // 内存 SRAM
+  let sram='地址         +0 +1 +2 +3   变量\n';
+  const vars=[['0x2000 0000','encoder_cnt'],[ '0x2000 0004','g_tick_1ms'],[ '0x2000 0008','pwm_duty'],[ '0x2000 000A','(保留)']];
+  vars.forEach(([a,label])=>{
+    const base=parseInt(a,16);
+    let line=a+'  ';
+    for(let o=0;o<4;o++){ const addr=base+o; const v=(addr===TICK_ADDR)?SIM.gTick:0; line+=(o===0?'':' ')+hx(v,2); }
+    line+='  ← '+label;
+    if(base===TICK_ADDR && SIM.gTick!==0) line+='  ⚡中断刚改过';
+    sram+=line+'\n';
+  });
+  sram+='...\n0x2000 4FE0   （栈区，中断时 SP 下移到这里）';
+  $('#memSram').textContent=sram;
+  // 外设寄存器
+  let per='地址         +0 +1 +2 +3   外设\n';
+  per+=`0x4001 1000  CRL\n0x4001 1004  CRH\n0x4001 1008  IDR\n`;
+  per+=`0x4001 100C  ${hx(SIM.odr,4).slice(0,2)} ${hx(SIM.odr,4).slice(2)}  ODR (bit13=${(SIM.odr>>13)&1})\n`;
+  per+=`0x4001 1010  BSRR\n0x4001 1014  BRR`;
+  $('#memPeriph').textContent=per;
+  // LED
+  const ledOn=((SIM.odr>>13)&1)===0;
+  $('#simLed').className='led '+(ledOn?'on':'off');
+  $('#odrBit').textContent=(SIM.odr>>13)&1;
+  // 栈
+  let st=`SP = 0x${hx(SIM.sp)}\n`;
+  const stackAddrs=[];
+  for(let a=SP_TOP-32;a<SP_TOP;a+=4) stackAddrs.push(a);
+  stackAddrs.forEach(a=>{
+    const v=SIM.stack[a]!==undefined?SIM.stack[a]:'·';
+    st+=`0x${hx(a)}  ${v=== '·'?'···· ····':hx(v>>>0)}${a===SIM.sp?'  ◀ SP':''}\n`;
+  });
+  const stackEl=$('#memStack'); stackEl.innerHTML='';
+  st.split('\n').forEach((line,i)=>{ const row=document.createElement('div'); row.className='stack-line'; row.textContent=line; if(changed && SIM.isr && i>0 && i<9) row.classList.add('push'); if(changed && !SIM.isr && i>0 && i<9 && changed.sp!==SIM.sp) row.classList.add('pop'); stackEl.appendChild(row); });
+  // 同步调试窗口
+  renderDebug();
+}
+function HLINES_SAFE(lines){ return lines.length; }
+function stopSim(){ SIM.running=false; if(SIM.timer){clearInterval(SIM.timer);SIM.timer=null;} $('#simAuto').textContent='▶ 自动播放'; }
+$('#simStep').onclick=()=>{ stopSim(); simStep(); };
+$('#simReset').onclick=()=>{ simReset(); };
+$('#simIrq').onclick=()=>{ stopSim(); simIrq(); };
+$('#simAuto').onclick=()=>{ if(SIM.running){stopSim();} else { SIM.running=true; $('#simAuto').textContent='⏹ 停止'; simLoop(); } };
+$('#simPause').onclick=()=>stopSim();
+function simLoop(){ if(!SIM.running)return; simStep(); const sp=parseInt($('#simSpeed').value); SIM.timer=setTimeout(simLoop, sp); }
+
+/* =====================================================================
+   调试视角
+   ===================================================================== */
+const WATCH=[
+  {name:'g_tick_1ms',type:'volatile uint8_t',addr:'0x20000004',get:()=>SIM.gTick},
+  {name:'encoder_cnt',type:'int16_t',addr:'0x20000008',get:()=>1240},
+  {name:'pwm_duty',type:'uint16_t',addr:'0x2000000A',get:()=>500},
+  {name:'pid_out',type:'float',addr:'0x2000000C',get:()=>23.75},
+];
+let watchPrev=null;
+function renderDebug(){
+  const tb=$('#watchTbl'); if(!tb)return;
+  tb.innerHTML='';
+  WATCH.forEach(w=>{
+    const tr=document.createElement('tr');
+    const v=w.get();
+    if(watchPrev!==null && watchPrev[w.name]!==v){ tr.classList.add('flash-new'); }
+    tr.innerHTML=`<td style="color:#67e8f9">${w.name}</td><td>${w.type}</td><td style="color:#8b949e">${w.addr}</td><td style="color:#22c55e">${v}</td>`;
+    tb.appendChild(tr);
+  });
+  watchPrev={}; WATCH.forEach(w=>watchPrev[w.name]=w.get());
+  // memory dump 联动高亮 g_tick_1ms
+  let mem='0x2000 0000:  ';
+  for(let i=0;i<16;i++){ const a=0x20000000+i; const v=(a===TICK_ADDR)?SIM.gTick:0; mem+=hx(v,2)+' '; if(i===7)mem+='\n0x2000 0008:  '; }
+  $('#dbgMem').textContent=mem+'  (高亮字节是 g_tick_1ms)';
+  // call stack
+  const cs=$('#dbgStack');
+  cs.innerHTML = SIM.isr
+    ? '<span style="color:#67e8f9">SysTick_Handler</span>  @0x'+hx(SIM.pc)+'<br>└ main()  @0x'+hx(PROG[SIM.savedProgIdx].a)+' <span style="color:#f59e0b">(被打断)</span><br>SP = 0x'+hx(SIM.sp)
+    : '<span style="color:#67e8f9">main()</span>  @0x'+hx(SIM.pc)+'<br>SP = 0x'+hx(SIM.sp)+'<br><span style="color:#6e7681">(无中断时栈很浅)</span>';
+}
+
+/* =====================================================================
+   初始化
+   ===================================================================== */
+renderSim(null, true);
+</script>
+</body>
+</html>

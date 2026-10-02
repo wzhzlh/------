@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STM32F103C8T6 · 寄存器可视化（位域级）</title>
+<style>
+/* ================= 主题变量 ================= */
+:root{
+  --bg:#0d1117; --bg2:#161b22; --panel:#1c2128; --panel2:#21262d;
+  --border:#30363d; --border2:#3d444d;
+  --text:#e6edf3; --dim:#8b949e; --faint:#6e7681;
+  --cyan:#22d3ee; --amber:#f59e0b; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --purple:#a78bfa; --pink:#f472b6;
+  --mono:"Consolas","SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC","Segoe UI",sans-serif;
+  background:radial-gradient(1200px 500px at 15% -5%, #14202b 0%, transparent 55%),
+             radial-gradient(1000px 500px at 100% 0%, #1a1626 0%, transparent 50%), var(--bg);
+  color:var(--text); line-height:1.7; min-height:100vh; overflow-x:hidden;
+}
+.mono{font-family:var(--mono)}
+a{color:var(--cyan);text-decoration:none}
+
+/* ================= 顶部标题 ================= */
+header{padding:60px 22px 34px;text-align:center}
+header .badge{
+  display:inline-block;font-size:12.5px;letter-spacing:2px;color:var(--cyan);
+  border:1px solid var(--border2);border-radius:999px;padding:6px 16px;margin-bottom:18px;
+  background:rgba(34,211,238,.06);
+}
+header h1{
+  font-size:clamp(26px,4.6vw,46px);font-weight:800;letter-spacing:1px;
+  background:linear-gradient(90deg,#67e8f9,#a5b4fc,#f9a8d4);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.param-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.param{
+  font-size:12.5px;padding:5px 13px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--dim);font-family:var(--mono);
+}
+.param b{color:var(--cyan);font-weight:600}
+header .tip{color:var(--faint);font-size:12.5px;margin-top:14px}
+
+/* ================= 导航 ================= */
+nav{
+  position:sticky;top:0;z-index:100;background:rgba(13,17,23,.85);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:2px;justify-content:center;padding:8px 14px;
+}
+nav a{color:var(--dim);font-size:12.5px;padding:6px 11px;border-radius:7px;transition:.15s;white-space:nowrap}
+nav a:hover{color:var(--text);background:var(--panel2)}
+nav a.on{color:var(--cyan);background:rgba(34,211,238,.1)}
+
+/* ================= 布局 ================= */
+main{max-width:1100px;margin:0 auto;padding:20px 18px 120px}
+section{
+  margin:48px 0;padding:30px 28px;
+  background:linear-gradient(180deg,var(--panel),var(--bg2));
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+}
+.sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.sec-num{font-size:13px;font-weight:700;color:#04121f;background:var(--cyan);border-radius:8px;padding:3px 10px;letter-spacing:1px}
+section h2{font-size:23px;font-weight:700}
+.sec-desc{color:var(--dim);margin:4px 0 20px;font-size:14.5px}
+h3{font-size:17px;font-weight:700;margin:24px 0 10px;color:#dbe6f5}
+h3 .tag{font-size:12px;color:var(--faint);font-weight:400;margin-left:8px}
+p.note{color:var(--dim);font-size:14px;margin:8px 0}
+
+/* 💡 按钮 + 提示 */
+.tip-btn{
+  margin-left:auto;font-family:inherit;font-size:13px;background:var(--panel2);
+  color:var(--dim);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;cursor:pointer;transition:.15s;
+}
+.tip-btn:hover{color:var(--amber);border-color:var(--amber)}
+.takeaway{
+  display:none;margin:12px 0;padding:12px 16px;border-left:3px solid var(--amber);
+  background:var(--bg2);border-radius:0 10px 10px 0;font-size:14.5px;color:var(--text);
+}
+.takeaway.show{display:block}
+.takeaway b{color:var(--amber)}
+
+/* ================= 通用组件 ================= */
+.stage{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;overflow:hidden}
+.stage.scroll{overflow-x:auto}
+svg{display:block;width:100%;height:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.btn{
+  font-family:inherit;font-size:13.5px;font-weight:600;background:var(--panel2);color:var(--text);
+  border:1px solid var(--border2);border-radius:9px;padding:8px 16px;cursor:pointer;transition:.15s;margin:4px 6px 4px 0;
+}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);border-color:var(--cyan);color:#04121f}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.warn{background:var(--red);border-color:var(--red);color:#fff}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.sm{padding:5px 11px;font-size:12.5px}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:12px 0}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0}
+.legend span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim)}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+th,td{border:1px solid var(--border2);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:#cfe0f5;font-weight:600}
+td{color:var(--dim)}
+td b{color:var(--text)}
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:6px;margin:2px 3px 2px 0;white-space:nowrap;font-family:var(--mono)}
+
+pre{
+  background:#0b0f16;border:1px solid var(--border);border-radius:11px;padding:14px 16px;
+  overflow-x:auto;font-size:13px;line-height:1.6;margin:12px 0;
+}
+pre code{font-family:var(--mono);color:#c7d6ee}
+.kw{color:#7dd3fc}.num{color:#fbbf24}.com{color:#6e7681}.str{color:#a5d6a7}.fn{color:#f472b6}.type{color:#a5b4fc}
+
+/* 信息面板 */
+.info-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;min-height:80px}
+.info-panel .big{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--cyan)}
+.info-panel .sub{color:var(--dim);font-size:13.5px;margin-top:4px}
+
+/* 流动箭头 / 悬停 */
+.flow{stroke-dasharray:8 8;animation:flowdash 1s linear infinite}
+@keyframes flowdash{to{stroke-dashoffset:-16}}
+.hot{cursor:pointer}
+
+/* 闪烁高亮 */
+.flash-new{animation:flashg .7s ease}
+.flash-mod{animation:flashy .7s ease}
+@keyframes flashg{0%{background:rgba(34,197,94,.45)}100%{background:transparent}}
+@keyframes flashy{0%{background:rgba(245,158,11,.5)}100%{background:transparent}}
+
+footer{text-align:center;color:var(--faint);font-size:12.5px;padding:30px}
+body{font-size:16px} header p,.sec-desc,p.note{color:#c4ceda;font-size:16px} section h2{font-size:26px} h3{font-size:20px}
+table{font-size:15.5px} th{color:#f0f6fc} td{color:#d0d9e3} .btn{font-size:15px} .narr{font-size:16px;color:#e6edf3}
+
+/* ================= 章节4 寄存器位 ================= */
+.bitbox{transition:.2s}
+.bitbox rect{transition:.2s}
+
+/* ================= 章节8 调试面板（寄存器“当前值”复用） ================= */
+.debug-panel{background:#0b0f16;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:var(--mono);font-size:12.5px}
+.debug-panel .ptitle{color:var(--faint);font-size:11px;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
+.focus{border:1px solid var(--amber);background:rgba(245,158,11,.08);border-radius:10px;padding:14px;margin:14px 0}.focus h3{color:#ffd166;margin-top:0}.danger{color:#ff8d8d!important}.ok{color:#7ee787!important}.bit-chip{display:inline-block;padding:3px 8px;border-radius:6px;background:#252b34;color:#f0f6fc;font-family:var(--mono);font-size:13px;margin:2px}.bit-chip.hot{background:rgba(245,158,11,.25);border:1px solid var(--amber)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">STM32 · 寄存器</div>
+  <h1>寄存器可视化（位域级）</h1>
+  <div class="param-bar">
+    <span class="param">内核 <b>Cortex-M3</b></span>
+    <span class="param">寄存器宽度 <b>32 位</b></span>
+    <span class="param">GPIOC <b>0x4001 1000</b></span>
+    <span class="param">RCC <b>0x4002 1000</b></span>
+  </div>
+  <p class="tip">选中寄存器 → 点按钮看位翻转动画与对应 C 代码 · 口诀：先 <span class="mono">&=~</span> 清位，再 <span class="mono">|=</span> 写值</p>
+</header>
+
+<main>
+
+<!-- ================= 寄存器可视化（位域级） ================= -->
+<section id="reg">
+  <div class="sec-head">
+    <span class="sec-num">01</span><h2>寄存器可视化（位域级）</h2>
+    <button class="tip-btn" data-tip="reg">💡</button>
+  </div>
+  <div class="takeaway" id="tip-reg"><b>寄存器就是外设的"开关面板"</b>——写某个 bit 就是拨动某个开关。改值口诀：先 <span class="mono">&=~</span> 清目标位，再 <span class="mono">|=</span> 写新值。</div>
+  <p class="sec-desc">一个寄存器 32 位，每几位控制一个功能。选中寄存器，点按钮看位翻转动画与 C 代码。</p>
+
+  <div class="stage">
+    <div class="controls">
+      <select id="regSel" class="btn" style="font-family:var(--mono)"></select>
+    </div>
+    <svg id="regBits" viewBox="0 0 900 130" role="img" aria-label="32位寄存器位图"></svg>
+    <div class="controls" id="regActions"></div>
+    <div class="grid2">
+      <pre id="regCode"><code>// 选择寄存器并操作后，这里显示对应 C 代码</code></pre>
+      <div class="debug-panel">
+        <div class="ptitle">当前值</div>
+        <div id="regValDisp" style="font-size:14px;line-height:2">十六进制：0x0000 0000<br>二进制：<span style="word-break:break-all">0000 0000 0000 0000 0000 0000 0000 0000</span></div>
+        <div class="ptitle" style="margin-top:12px">HAL 对应代码与解释</div>
+        <div id="halRegInfo" class="note">选择操作按钮查看 HAL 写法。</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="odrCompare" style="display:none">
+  <h3>BSRR 原子操作 vs ODR 读-改-写</h3>
+  <div class="stage">
+    <table>
+      <thead><tr><th></th><th>ODR（读-改-写）</th><th>BSRR（原子写）</th></tr></thead>
+      <tbody>
+        <tr><td><b>点灯 PC13</b></td><td><span class="mono">ODR &amp;= ~(1&lt;&lt;13)</span> — 先读、再改、再写 3 步，可能被打断</td><td><span class="mono">BSRR = (1&lt;&lt;29)</span> — 一条写指令，原子完成，不会被中断打断</td></tr>
+        <tr><td><b>灭灯 PC13</b></td><td><span class="mono">ODR |= (1&lt;&lt;13)</span></td><td><span class="mono">BSRR = (1&lt;&lt;13)</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">BSRR 高 16 位（bit16~31）对应「复位」= 把 ODR 对应位置 0；低 16 位对应「置位」。写 1 才有效，写 0 无效，所以<b>单个写就能原子地改一个引脚</b>，避免 ODR 读-改-写被中断插一脚导致出错。</p>
+  </div>
+  </div></div>
+</section>
+
+<section id="补充">
+  <div class="sec-head"><span class="sec-num">02</span><h2>位带地址计算器（Cortex-M3）</h2></div>
+  <p class="sec-desc">把 SRAM/外设位带区的某一位换算成别名地址。输入寄存器地址和位号，结果同时显示公式、地址范围和可直接使用的 C 代码。</p>
+  <div class="focus">
+    <div class="controls"><label>寄存器地址 <input id="bbAddr" class="btn" value="0x4001100C" style="width:170px;font-family:var(--mono)"></label><label>位号 <input id="bbBit" class="btn" type="number" min="0" max="31" value="13" style="width:70px"></label><button class="btn primary" id="bbCalc">计算别名地址</button></div>
+    <div id="bbOut" class="info-panel"><div class="big">0x422201B4</div><div class="sub">GPIOC_ODR bit13 的位带别名地址</div></div>
+    <pre id="bbFormula"><code>alias = 0x42000000 + (byte_offset × 32) + (bit × 4)</code></pre>
+    <p class="note">支持范围：外设位带区 <span class="mono">0x40000000–0x400FFFFF</span> → 别名区 <span class="mono">0x42000000–0x43FFFFFF</span>；SRAM 位带区 <span class="mono">0x20000000–0x200FFFFF</span> → <span class="mono">0x22000000–0x23FFFFFF</span>。</p>
+  </div>
+</section>
+
+</main>
+
+<footer>STM32F103C8T6 · 寄存器可视化（位域级）· 单文件 · 无外部依赖 · 双击即可打开</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   通用工具
+   ===================================================================== */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function hx(n, w=8){ return n.toString(16).toUpperCase().padStart(w,'0'); }
+function hx4(n){ // 地址四位分组 0x0800 0000
+  const s = n.toString(16).toUpperCase().padStart(8,'0');
+  return '0x' + s.slice(0,4) + ' ' + s.slice(4);
+}
+function svg(tag, attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const k in attrs)e.setAttribute(k,attrs[k]); return e; }
+function txt(x,y,str,cls,extra){ const t=svg('text',Object.assign({x,y},extra)); t.setAttribute('class',cls||''); t.textContent=str; return t; }
+
+/* 滚动进入视口（不必须，但加一点淡入） */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='none';io.unobserve(e.target);}}),{threshold:0.05});
+$$('section').forEach(s=>{s.style.opacity='0';s.style.transform='translateY(24px)';s.style.transition='opacity .6s,transform .6s';io.observe(s);});
+
+/* 💡 按钮 */
+$$('.tip-btn').forEach(b=>b.onclick=()=>{document.getElementById('tip-'+b.dataset.tip).classList.toggle('show');});
+
+/* =====================================================================
+   寄存器可视化（位域级）
+   ===================================================================== */
+const REGS={
+  'GPIOC_CRH': {addr:'0x4001 1004',val:0x00000000,desc:'端口配置寄存器高，配置 PC8~PC13'},
+  'GPIOC_ODR': {addr:'0x4001 100C',val:0x00002000,desc:'端口输出数据寄存器，bit13 控制 PC13'},
+  'GPIOC_IDR': {addr:'0x4001 1008',val:0x00002000,desc:'端口输入数据寄存器，读引脚电平'},
+  'RCC_APB2ENR': {addr:'0x4002 1018',val:0x00000000,desc:'APB2 外设时钟使能，bit4=IOPCEN 开 GPIOC 时钟'},
+};
+let curReg='GPIOC_CRH';
+function buildRegSel(){
+  const sel=$('#regSel'); sel.innerHTML='';
+  Object.keys(REGS).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=`${k} (${REGS[k].addr})`; sel.appendChild(o); });
+  sel.onchange=()=>{ curReg=sel.value; if(curReg==='RCC_APB2ENR')REGS[curReg].val=0; if(curReg==='GPIOC_ODR')REGS[curReg].val=0x2000; drawRegBits(); buildRegActions(); };
+}
+function drawRegBits(){
+  const s=$('#regBits'); s.innerHTML='';
+  const v=REGS[curReg].val;
+  s.appendChild(txt(450,22,REGS[curReg].desc,null,{fill:'#6e7681','font-size':12,'text-anchor':'middle'}));
+  const Y=45,W=22,GAP=2;
+  for(let b=31;b>=0;b--){
+    const x=40+(31-b)*(W+GAP);
+    const on=(v>>>b)&1;
+    const g=svg('g',{class:'bitbox'});
+    const r=svg('rect',{x,y:Y,width:W,height:W,rx:3,fill:on?'#22d3ee':'#21262d',stroke:on?'#67e8f9':'#30363d'});
+    const t=txt(x+W/2,Y+W+14,String(b),null,{fill:'#6e7681','font-size':9,'text-anchor':'middle','font-family':'monospace'});
+    g.append(r,t);
+    if(on){ g.appendChild(txt(x+W/2,Y+W/2+4,'1',null,{fill:'#04121f','font-size':12,'text-anchor':'middle','font-weight':'700'})); }
+    s.appendChild(g);
+  }
+  s.appendChild(txt(40,Y+W+30,'bit31',null,{fill:'#6e7681','font-size':10,'font-family':'monospace'}));
+  s.appendChild(txt(40+31*(W+GAP)+W,Y+W+30,'bit0',null,{fill:'#6e7681','font-size':10,'text-anchor':'middle','font-family':'monospace'}));
+  // 高亮 PC13 的 bit20~23（CRH）或 bit13（ODR）
+  if(curReg==='GPIOC_CRH'){
+    for(let b=20;b<=23;b++){ const x=40+(31-b)*(W+GAP); s.appendChild(svg('rect',{x:x-1,y:Y-3,width:W+2,height:W+6,rx:4,fill:'none',stroke:'#f59e0b','stroke-width':1.6,'stroke-dasharray':'3 2'})); }
+    s.appendChild(txt(40+(31-20)*(W+GAP),Y-8,'PC13 配置位 bit20~23',null,{fill:'#f59e0b','font-size':10.5,'font-family':'monospace'}));
+  }else if(curReg==='GPIOC_ODR'){
+    const x=40+(31-13)*(W+GAP); s.appendChild(svg('rect',{x:x-1,y:Y-3,width:W+2,height:W+6,rx:4,fill:'none',stroke:'#f59e0b','stroke-width':1.6,'stroke-dasharray':'3 2'}));
+    s.appendChild(txt(x,Y-8,'bit13',null,{fill:'#f59e0b','font-size':10.5,'font-family':'monospace'}));
+  }else if(curReg==='RCC_APB2ENR'){
+    const x=40+(31-4)*(W+GAP); s.appendChild(svg('rect',{x:x-1,y:Y-3,width:W+2,height:W+6,rx:4,fill:'none',stroke:'#f59e0b','stroke-width':1.6,'stroke-dasharray':'3 2'}));
+    s.appendChild(txt(x,Y-8,'bit4 IOPCEN',null,{fill:'#f59e0b','font-size':10.5,'font-family':'monospace'}));
+  }
+  updateRegValDisp();
+}
+function updateRegValDisp(){
+  const v=REGS[curReg].val;
+  $('#regValDisp').innerHTML=`十六进制：<span class="mono" style="color:#22d3ee">0x${hx(v).slice(0,4)} ${hx(v).slice(4)}</span><br>二进制：<span style="word-break:break-all">${(v>>>0).toString(2).padStart(32,'0').replace(/(.{4})(?=.)/g,'$1 ')}</span>`;
+}
+function buildRegActions(){
+  const a=$('#regActions'); a.innerHTML='';
+  const info=(hal,desc)=>{ $('#halRegInfo').innerHTML='<div class="mono" style="color:var(--cyan);white-space:pre-wrap">'+hal+'</div><div style="margin-top:6px">'+desc+'</div>'; };
+  $('#odrCompare').style.display=curReg==='GPIOC_ODR'?'block':'none';
+  if(curReg==='GPIOC_CRH'){
+    const b1=btn('设为推挽输出 2MHz (MODE=10,CNF=00)');
+    b1.onclick=()=>{ REVS.record(); let v=REGS[curReg].val; v&=~(0xF<<20); v|=(0x2<<20); REGS[curReg].val=v; setCode('GPIOC_CRH &= ~(0xF << 20);   // 清 bit20~23\nGPIOC_CRH |=  (0x2 << 20);   // 写 0b0010 = 2MHz 推挽'); info('GPIO_InitTypeDef GPIO_InitStruct = {0};\nGPIO_InitStruct.Pin = GPIO_PIN_13;\nGPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;\nGPIO_InitStruct.Speed = GPIO_SPEED_FREQ_2MHz;\nHAL_GPIO_Init(GPIOC, &GPIO_InitStruct);','HAL 配置 PC13 为推挽输出，底层会先清 CRH 的 4 位字段再写入 0010。'); drawRegBits(); };
+    a.append(b1);
+    a.append(btn2('→ 等效：先清后写','GPIOC_CRH 的 CNF[1:0]=00(推挽)、MODE[1:0]=10(2MHz)'));
+    a.append(btn2('HAL_GPIO_Init(GPIOC, ...)', 'HAL 会先开时钟，再清 CRH 的 PC13 四位字段并写入配置'));
+    a.append(btn2('HAL_GPIO_DeInit(GPIOC, GPIO_PIN_13)', 'HAL 将对应 GPIO 配置恢复为复位状态'));
+  }else if(curReg==='GPIOC_ODR'){
+    const b1=btn('点灯：ODR &= ~(1<<13)');
+    b1.onclick=()=>{ REVS.record(); REGS[curReg].val &= ~(1<<13); setCode('GPIOC_ODR &= ~(1 << 13);   // 清 bit13 → PC13 低电平 → LED 亮'); info('HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);','HAL 通过 BSRR 高 16 位原子复位输出，PC13 输出低电平。'); drawRegBits(); };
+    const b2=btn('灭灯：ODR |= (1<<13)');
+    b2.onclick=()=>{ REVS.record(); REGS[curReg].val |= (1<<13); setCode('GPIOC_ODR |= (1 << 13);   // 置 bit13 → LED 灭'); info('HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);','HAL 通过 BSRR 低 16 位原子置位输出，PC13 输出高电平。'); drawRegBits(); };
+    const b3=btn('BSRR 原子点灯：BSRR=(1<<29)');
+    b3.onclick=()=>{ REVS.record(); REGS[curReg].val &= ~(1<<13); setCode('GPIOC_BSRR = (1 << 29);   // 写 1 复位 bit13，一条写指令，原子！'); info('HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);','BSRR 写入一次即可改变输出，不需要 ODR 的读-改-写。'); drawRegBits(); };
+    a.append(b1,b2,b3);
+    a.append(btn2('HAL_GPIO_WritePin / TogglePin', 'WritePin 最终写 BSRR；TogglePin 先读 ODR 再决定写位置位或复位'));
+    a.append(btn2('HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13)', '读取 ODR 当前值后，通过 BSRR 原子翻转 PC13'));
+  }else if(curReg==='RCC_APB2ENR'){
+    const b1=btn('开 GPIOC 时钟：APB2ENR |= (1<<4)');
+    b1.onclick=()=>{ REVS.record(); REGS[curReg].val |= (1<<4); setCode('RCC_APB2ENR |= (1 << 4);   // IOPCEN=1，给 GPIOC 送时钟\n// 用外设前必须先开时钟！'); info('__HAL_RCC_GPIOC_CLK_ENABLE();','HAL 宏置位 RCC_APB2ENR.bit4，为 GPIOC 接通 APB2 时钟。'); drawRegBits(); };
+    a.append(b1);
+    a.append(btn2('__HAL_RCC_GPIOC_CLK_ENABLE()', 'HAL 宏最终置位 RCC_APB2ENR.bit4'));
+  }else if(curReg==='GPIOC_IDR'){
+    a.append(btn2('（只读）IDR 反映引脚电平，不能写','bit13 读到 0 表示 PC13 被拉低'));
+    a.append(btn2('HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)', 'HAL 返回 (GPIOC->IDR >> 13) & 1'));
+    a.append(btn2('HAL_GPIO_LockPin(GPIOC, GPIO_PIN_13)', '锁定 GPIO 配置，防止后续误改'));
+  }
+}
+function setCode(c){ $('#regCode').innerHTML='<code>'+c.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</code>'; }
+function btn(l){ const b=document.createElement('button'); b.className='btn primary sm'; b.textContent=l; return b; }
+function btn2(l,t){ const b=document.createElement('button'); b.className='btn sm'; b.textContent=l; b.title=t; b.onclick=()=>{ const map={
+  'HAL_GPIO_Init(GPIOC, ...)':['HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);','HAL 根据 GPIO_InitStruct 配置 PC13 的模式、速度和上下拉。'],
+  'HAL_GPIO_DeInit(GPIOC, GPIO_PIN_13)':['HAL_GPIO_DeInit(GPIOC, GPIO_PIN_13);','HAL 将 PC13 恢复为复位配置。'],
+  'HAL_GPIO_WritePin / TogglePin':['HAL_GPIO_WritePin(...) / HAL_GPIO_TogglePin(...);','WritePin 使用 BSRR 原子置位/复位，TogglePin 先读 ODR 再写 BSRR。'],
+  'HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13)':['HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);','读取 ODR 后通过 BSRR 原子翻转 PC13。'],
+  '__HAL_RCC_GPIOC_CLK_ENABLE()':['__HAL_RCC_GPIOC_CLK_ENABLE();','HAL 宏置位 APB2ENR.bit4，接通 GPIOC 时钟。'],
+  'HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)':['HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);','读取 IDR.bit13，返回 GPIO_PIN_SET 或 GPIO_PIN_RESET。'],
+  'HAL_GPIO_LockPin(GPIOC, GPIO_PIN_13)':['HAL_GPIO_LockPin(GPIOC, GPIO_PIN_13);','锁定 GPIO 配置，防止后续误改。']}; if(map[l]) $('#halRegInfo').innerHTML='<div class="mono" style="color:var(--cyan);white-space:pre-wrap">'+map[l][0]+'</div><div style="margin-top:6px">'+map[l][1]+'</div>'; }; return b; }
+// 记录上一次值用于闪高亮
+const REVS={prev:{},record(){REVS.prev={...REGS[curReg]};}};
+
+/* =====================================================================
+   初始化
+   ===================================================================== */
+buildRegSel(); drawRegBits(); buildRegActions();
+
+function bitband(){
+  const raw=$('#bbAddr').value.trim().replace(/^0x/i,'');
+  const a=parseInt(raw,16), b=Number($('#bbBit').value);
+  const valid=Number.isFinite(a)&&Number.isInteger(b)&&b>=0&&b<=31;
+  const sram=a>=0x20000000&&a<=0x200FFFFF, periph=a>=0x40000000&&a<=0x400FFFFF;
+  if(!valid || (!sram&&!periph)){ $('#bbOut').innerHTML='<div class="big danger">输入超出位带区</div><div class="sub">地址须在 SRAM 0x20000000–0x200FFFFF 或外设 0x40000000–0x400FFFFF</div>'; return; }
+  const base=sram?0x22000000:0x42000000, alias=base+((a-(sram?0x20000000:0x40000000))<<5)+(b<<2);
+  const region=sram?'SRAM':'外设';
+  $('#bbOut').innerHTML=`<div class="big">0x${hx(alias)}</div><div class="sub">${region}：0x${hx(a)} · bit ${b} · 写 0/1 即清零/置位该位</div>`;
+  $('#bbFormula').innerHTML=`<code>alias = 0x${hx(base)} + ((0x${hx(a)} - 0x${hx(sram?0x20000000:0x40000000)}) × 32) + (${b} × 4)\nvolatile uint32_t *bit = (uint32_t *)0x${hx(alias)};</code>`;
+}
+$('#bbCalc').onclick=bitband; bitband();
+</script>
+</body>
+</html>
